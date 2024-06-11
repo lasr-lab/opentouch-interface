@@ -1,0 +1,7 @@
+type: "GELSIGHT_MINI"
+name: "First Gripper"   # Options: Choose arbitrary name
+serial_id: null         # Is automatically detected
+lighting: null          # Unavailable
+resolution: null        # Unavailable
+fps: null               # Unavailable
+stream: "FRAME"         # Options: FRAME

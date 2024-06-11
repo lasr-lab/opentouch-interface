@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
 from digit_interface.digit import Digit
+import warnings
 
 
 class DigitSensor(TouchSensor):
@@ -20,6 +21,7 @@ class DigitSensor(TouchSensor):
     def set(self, attr: SetOptions, value: Any) -> Any:
         # Set resolution
         if attr == SetOptions.RESOLUTION:
+            value = Digit.STREAMS[value]
             if isinstance(value, Dict):
                 self.digit.set_resolution(value)
             else:
@@ -49,7 +51,7 @@ class DigitSensor(TouchSensor):
 
         # Error case
         else:
-            raise ValueError("attr did not match any available attribute.")
+            warnings.warn("attr did not match any available attribute. Skipped this case")
 
     def read(self, attr: Streams, value: Any = None) -> Any:
         if attr == Streams.FRAME:
@@ -64,7 +66,10 @@ class DigitSensor(TouchSensor):
 
     def show(self, attr: Streams, value: Any = None) -> Any:
         if attr == Streams.FRAME:
+            if value is not None:
+                raise TypeError(f"When reading frames, expected value must be None but found {value} instead")
             self.digit.show_view()
+
         else:
             raise ValueError("attr did not match any available attribute.")
 

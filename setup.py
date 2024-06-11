@@ -5,8 +5,16 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        'digit-interface'
+        'digit-interface',
+        'gelsight @ git+ssh://git@github.com/gelsightinc/gsrobotics.git'
     ],
+    extras_require={
+        "example": [
+            "hydra-core",
+            "omegaconf",
+            "cv2"
+        ]
+    },
     author='Roberto Calandra',
     author_email='rcalandra@lasr.org',
     description='Description of your package',
