@@ -4,7 +4,9 @@ The OpenTouch Interface is a Python package designed to provide a unified interf
 
 ## Features
 
-- Simple and unified API for the following touch sensors: [Digit](https://digit.ml/), [GelSight Mini](https://www.gelsight.com/gelsightmini/).
+We currently offer a simple and unified API for the following touch sensors: 
+- [Digit](https://digit.ml/)
+- [GelSight Mini](https://www.gelsight.com/gelsightmini/).
 
 ## Installation
 
