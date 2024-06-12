@@ -13,6 +13,7 @@ To install OpenTouch Interface, follow these steps:
 ```bash
 git clone https://github.com/lasr-lab/opentouch-interface
 cd opentouch-interface
+pip install .
 python setup.py install
 ```
 
@@ -21,7 +22,12 @@ Additionally, make sure you have all necessary libraries installed by checking t
 ## Examples
 
 ### Simple Example
-The script located at `examples/simple/demo.py` produces a continuous video stream from a touch sensor. To run this example, execute the following command:
+The script located at `examples/simple/demo.py` produces a continuous video stream from a touch sensor. For that, install the following requirements:
+```bash
+pip install hydra-core omegaconf --upgrade
+```
+
+To run this example, execute:
 ```bash
 python examples/simple/demo.py
 ```
