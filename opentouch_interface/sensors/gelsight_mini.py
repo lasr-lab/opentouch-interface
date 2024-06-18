@@ -10,7 +10,8 @@ from gelsight import gsdevice
 
 class GelsightMiniSensor(TouchSensor):
 
-    def __init__(self):
+    def __init__(self, sensor_type: TouchSensor.SensorType):
+        super().__init__(sensor_type)
         self.gelsight = None
         self.name = None
         self.device_type = "GelSight Mini"
@@ -20,6 +21,7 @@ class GelsightMiniSensor(TouchSensor):
             raise ValueError("GelSight Mini does not expect a serial ID")
 
         self.name = name
+        self.settings["Name"] = name
         self.gelsight = gsdevice.Camera(dev_type=self.device_type)
 
     def connect(self):
@@ -28,6 +30,13 @@ class GelsightMiniSensor(TouchSensor):
     def set(self, attr: SetOptions, value: Any = None) -> Any:
         if value is not None:
             warnings.warn("attr did not match any available attribute. Skipped this case")
+
+    def get(self, attr: SetOptions) -> Any:
+        if attr not in self.settings:
+            warnings.warn("attr did not match any available attribute. Returning None instead")
+            return None
+
+        return self.settings[attr]
 
     def read(self, attr: Streams, value: Any = None) -> Any:
         if attr == Streams.FRAME:
@@ -53,5 +62,5 @@ class GelsightMiniSensor(TouchSensor):
         else:
             raise ValueError("attr did not match any available attribute.")
 
-    def close(self):
+    def disconnect(self):
         pass

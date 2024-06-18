@@ -10,6 +10,13 @@ class TouchSensor(ABC):
     Concrete sensor implementations can extend this interface to provide
     specific functionalities for different touch sensor.
     """
+    class SensorType(Enum):
+        DIGIT = "Digit"
+        GELSIGHT_MINI = "Gelsight Mini"
+
+    def __init__(self, sensor_type: SensorType):
+        self.sensor_type = sensor_type
+        self.settings = {}
 
     @abstractmethod
     def initialize(self, name: str, value: Any) -> None:
@@ -41,6 +48,10 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
+    def get(self, attr: Enum) -> Any:
+        pass
+
+    @abstractmethod
     def read(self, attr: Enum, value: Any = None) -> Any:
         """
         If a sensor supports different data streams, choose one of them.
@@ -67,7 +78,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def close(self):
+    def disconnect(self):
         """
         Closes the connection with the sensor hardware.
         """

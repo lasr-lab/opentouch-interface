@@ -1,16 +1,14 @@
-from enum import Enum
 from opentouch_interface.sensors.digit import DigitSensor
 from opentouch_interface.sensors.gelsight_mini import GelsightMiniSensor
+from opentouch_interface.touch_sensor import TouchSensor
 
 
 class OpentouchInterface:
-    class SensorType(Enum):
-        DIGIT = "Digit"
-        GELSIGHT_MINI = "Gelsight Mini"
 
-    def __new__(cls, sensor_type: 'OpentouchInterface.SensorType', *args, **kwargs):
-        if sensor_type == OpentouchInterface.SensorType.DIGIT:
-            return DigitSensor()
-        elif sensor_type == OpentouchInterface.SensorType.GELSIGHT_MINI:
-            return GelsightMiniSensor()
-        return super().__new__(cls)
+    def __new__(cls, sensor_type: 'TouchSensor.SensorType', *args, **kwargs):
+        if sensor_type == TouchSensor.SensorType.DIGIT:
+            return DigitSensor(TouchSensor.SensorType.DIGIT)
+        elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
+            return GelsightMiniSensor(TouchSensor.SensorType.GELSIGHT_MINI)
+        else:
+            raise ValueError(f'Invalid sensor type {sensor_type}')
