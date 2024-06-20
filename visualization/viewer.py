@@ -60,9 +60,9 @@ class DigitViewer(Viewer):
 
     def render_options(self):
         self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
-        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"), key="Resolution")
-        fps = self.right.selectbox("FPS", ("30", "60"), key="FPS")
-        intensity = self.right.slider("Brightness", 0, 15, 15, key="Brightness")
+        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"), key=f"Resolution_{self.sensor.settings['Name']}")
+        fps = self.right.selectbox("FPS", ("30", "60"), key=f"FPS_{self.sensor.settings['Name']}")
+        intensity = self.right.slider("Brightness", 0, 15, 15, key=f"Brightness_{self.sensor.settings['Name']}")
         self.dg.divider()
 
         self.sensor.set(SetOptions.INTENSITY, value=int(intensity))
@@ -75,7 +75,8 @@ class GelsightMiniViewer(Viewer):
         super().__init__(sensor)
 
     def render_options(self):
-        pass
+        self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
+        self.dg.divider()
 
 
 def render_sidebar():
@@ -126,6 +127,7 @@ def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
         exists = exists or (viewer.sensor.settings['Name'] == name)
 
     if not exists:
+        print(f"Added {name} to sensors")
         sensor = OpentouchInterface(sensor_type=sensor_type)
         sensor.initialize(name=name, serial=serial)
         sensor.connect()
@@ -139,9 +141,15 @@ def render_viewers():
         for viewer in st.session_state.viewers:
             viewer.render_options()
 
-        for viewer in st.session_state.viewers:
-            while True:
+        while True:
+            for viewer in st.session_state.viewers:
                 viewer.render_frame()
+
+
+def update_renderer(dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
+    if 'viewers' in st.session_state:
+        for viewer in st.session_state.viewers:
+            viewer.update_delta_generator(dg, left, right)
 
 
 def get_clean_rendering_container(app_state: str) -> DeltaGenerator:
@@ -162,12 +170,6 @@ def get_clean_rendering_container(app_state: str) -> DeltaGenerator:
     }[slot_in_use]
 
     return slot.container()
-
-
-def update_renderer(dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
-    if 'viewers' in st.session_state:
-        for viewer in st.session_state.viewers:
-            viewer.update_delta_generator(dg, left, right)
 
 
 def main():

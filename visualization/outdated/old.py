@@ -7,6 +7,11 @@ from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
 from streamlit.delta_generator import DeltaGenerator
 
+st.set_page_config(
+    page_title="Opentouch Viewer",
+    page_icon="👌",
+    initial_sidebar_state="expanded",
+)
 
 top = st.empty()
 top_divider = st.empty()
@@ -25,25 +30,28 @@ class ViewerFactory:
 class Viewer:
     def __init__(self, sensor: TouchSensor):
         self.sensor: TouchSensor = sensor
-        self.image_widget = st.image([])
+        self.image_widget = None
+        self.dg = None
+        self.left = None
+        self.right = None
 
     @abstractmethod
-    def render_options(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
+    def render_options(self):
         pass
 
     def get_frame(self):
         return self.sensor.read(Streams.FRAME)
 
-    def update_image_widget(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
-        self.image_widget = left.image([])
-
-    def get_image_widget(self):
-        return self.image_widget
+    def update_delta_generator(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
+        self.dg = dg
+        self.left = left
+        self.right = right
+        self.image_widget = self.left.image([])
 
     def render_frame(self):
+        # print(f"Rendering frame from {self.sensor.settings['Name']}")
         frame = self.get_frame()
-        image = self.get_image_widget()
-        image.image(frame)
+        self.image_widget.image(frame)
 
 
 class DigitViewer(Viewer):
@@ -51,11 +59,12 @@ class DigitViewer(Viewer):
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor)
 
-    def render_options(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
-        right.markdown(f"## Settings for {self.sensor.settings['Name']}")
-        resolution = right.selectbox("Resolution", ("QVGA", "VGA"), key="Resolution")
-        fps = right.selectbox("FPS", ("30", "60"), key="FPS")
-        intensity = right.slider("Brightness", 0, 15, 15, key="Brightness")
+    def render_options(self):
+        self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
+        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"), key=f"Resolution_{self.sensor.settings['Name']}")
+        fps = self.right.selectbox("FPS", ("30", "60"), key=f"FPS_{self.sensor.settings['Name']}")
+        intensity = self.right.slider("Brightness", 0, 15, 15, key=f"Brightness_{self.sensor.settings['Name']}")
+        self.dg.divider()
 
         self.sensor.set(SetOptions.INTENSITY, value=int(intensity))
         self.sensor.set(SetOptions.RESOLUTION, value=resolution)
@@ -66,8 +75,9 @@ class GelsightMiniViewer(Viewer):
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor)
 
-    def render_options(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
-        pass
+    def render_options(self):
+        self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
+        self.dg.divider()
 
 
 def render_sidebar():
@@ -118,6 +128,7 @@ def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
         exists = exists or (viewer.sensor.settings['Name'] == name)
 
     if not exists:
+        print(f"Added {name} to sensors")
         sensor = OpentouchInterface(sensor_type=sensor_type)
         sensor.initialize(name=name, serial=serial)
         sensor.connect()
@@ -126,17 +137,20 @@ def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
         st.session_state.viewers.append(viewer)
 
 
-def render_viewers(dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
+def render_viewers():
     if 'viewers' in st.session_state:
         for viewer in st.session_state.viewers:
-            viewer.update_image_widget(dg, left, right)
-            viewer.render_options(dg, left, right)
-            # viewer.render_frame()
-            dg.divider()
+            viewer.render_options()
 
-        for viewer in st.session_state.viewers:
-            while True:
+        while True:
+            for viewer in st.session_state.viewers:
                 viewer.render_frame()
+
+
+def update_renderer(dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
+    if 'viewers' in st.session_state:
+        for viewer in st.session_state.viewers:
+            viewer.update_delta_generator(dg, left, right)
 
 
 def get_clean_rendering_container(app_state: str) -> DeltaGenerator:
@@ -162,10 +176,13 @@ def get_clean_rendering_container(app_state: str) -> DeltaGenerator:
 def main():
     top.title('Opentouch Viewer')
     top_divider.divider()
+
     dg = get_clean_rendering_container(app_state=f"{random.random()}")
     left, right = dg.container().columns(2)
+
+    update_renderer(dg, left, right)
     render_sidebar()
-    render_viewers(dg, left, right)
+    render_viewers()
 
 
 if __name__ == '__main__':
