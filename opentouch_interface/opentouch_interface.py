@@ -1,4 +1,5 @@
 from opentouch_interface.sensors.digit import DigitSensor
+from opentouch_interface.sensors.file_sensor import FileSensor
 from opentouch_interface.sensors.gelsight_mini import GelsightMiniSensor
 from opentouch_interface.touch_sensor import TouchSensor
 
@@ -10,5 +11,7 @@ class OpentouchInterface:
             return DigitSensor(TouchSensor.SensorType.DIGIT)
         elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
             return GelsightMiniSensor(TouchSensor.SensorType.GELSIGHT_MINI)
+        elif sensor_type == TouchSensor.SensorType.FILE:
+            return FileSensor(TouchSensor.SensorType.FILE)
         else:
             raise ValueError(f'Invalid sensor type {sensor_type}')

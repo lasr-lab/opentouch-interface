@@ -5,7 +5,10 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        'streamlit'
+        'streamlit',
+        'numpy',
+        'torch',
+        'h5py'
     ],
     author='Roberto Calandra',
     author_email='rcalandra@lasr.org',

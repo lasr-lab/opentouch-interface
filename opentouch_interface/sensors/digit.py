@@ -1,7 +1,11 @@
+import time
 from typing import Any, Dict, List
+
+import cv2
 
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.dataclasses.image import Image, ImageWriter
 from digit_interface.digit import Digit
 import warnings
 
@@ -12,10 +16,11 @@ class DigitSensor(TouchSensor):
         super().__init__(sensor_type)
         self.digit = None
 
-    def initialize(self, name: str, serial: str) -> Digit:
+    def initialize(self, name: str, serial: str, path: str) -> Digit:
         self.digit = Digit(serial=serial, name=name)
         self.settings["Name"] = name
         self.settings["Serial ID"] = serial
+        self.settings["path"] = path
         return self.digit
 
     def connect(self):
@@ -71,18 +76,38 @@ class DigitSensor(TouchSensor):
         if attr == Streams.FRAME:
             if isinstance(value, bool) or value is None:
                 transpose = (value is not None) or value
-                return self.digit.get_frame(transpose)
+                frame = self.digit.get_frame(transpose)
+                return Image(image=frame, rotation=(0, 1, 2))
             else:
                 raise TypeError(f"Expected value must be of type bool but found {type(value)} instead")
 
         else:
             raise ValueError("attr did not match any available attribute.")
 
-    def show(self, attr: Streams, value: Any = None) -> Any:
+    def show(self, attr: Streams, recording: bool = False) -> Any:
         if attr == Streams.FRAME:
-            if value is not None:
-                raise TypeError(f"When reading frames, expected value must be None but found {value} instead")
-            self.digit.show_view()
+            fps = self.get(attr=SetOptions.FPS)
+            interval = 1.0 / fps
+
+            with ImageWriter(file_path=self.settings["path"], fps=fps) as recorder:
+                while True:
+                    start_time = time.time()  # Record the start time
+                    image = self.read(attr=Streams.FRAME)
+
+                    if recording:
+                        recorder.save(image)
+
+                    cv2.imshow('Image', image.as_cv2())
+
+                    if cv2.waitKey(1) == 27:  # Break loop if Esc key is pressed
+                        break
+
+                    elapsed_time = time.time() - start_time
+                    time_to_sleep = interval - elapsed_time
+                    if time_to_sleep > 0:
+                        time.sleep(time_to_sleep)
+
+            cv2.destroyAllWindows()
 
         else:
             raise ValueError("attr did not match any available attribute.")

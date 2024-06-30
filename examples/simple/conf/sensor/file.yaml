@@ -1,0 +1,9 @@
+type: "FILE"
+name: "Image reader"    # Options: Choose arbitrary name
+serial_id: None         # Options: None
+lighting: None          # Options: 0 to 15
+resolution: None        # Options: VGA, QVGA
+fps: 30                 # Options: 30, 60
+stream: "FRAME"         # Options: FRAME
+recording: False        # Options: False
+path: "frames.h5"       # Enter path to file you want to read (must have .h5 ending)
