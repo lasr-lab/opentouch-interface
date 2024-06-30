@@ -1,12 +1,6 @@
-import time
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
-
-import cv2
-
-from opentouch_interface.dataclasses.image import ImageWriter
-from opentouch_interface.options import Streams, SetOptions
 
 
 class TouchSensor(ABC):

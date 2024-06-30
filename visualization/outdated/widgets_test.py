@@ -1,4 +1,3 @@
-from time import sleep
 from streamlit.runtime.state import get_session_state
 import streamlit as st
 

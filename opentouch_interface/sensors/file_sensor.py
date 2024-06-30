@@ -1,7 +1,7 @@
 from typing import Any
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
-from opentouch_interface.dataclasses.image import Image, ImageWriter, ImageReader
+from opentouch_interface.dataclasses.image import Image, ImageReader
 import cv2
 
 

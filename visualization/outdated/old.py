@@ -61,7 +61,8 @@ class DigitViewer(Viewer):
 
     def render_options(self):
         self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
-        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"), key=f"Resolution_{self.sensor.settings['Name']}")
+        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"),
+                                          key=f"Resolution_{self.sensor.settings['Name']}")
         fps = self.right.selectbox("FPS", ("30", "60"), key=f"FPS_{self.sensor.settings['Name']}")
         intensity = self.right.slider("Brightness", 0, 15, 15, key=f"Brightness_{self.sensor.settings['Name']}")
         self.dg.divider()
