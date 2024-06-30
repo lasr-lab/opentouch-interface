@@ -1,8 +1,10 @@
+import time
 import warnings
 from typing import Any
 
 import cv2
 
+from opentouch_interface.dataclasses.image import ImageWriter
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
 from gelsight import gsdevice
@@ -16,12 +18,13 @@ class GelsightMiniSensor(TouchSensor):
         self.name = None
         self.device_type = "GelSight Mini"
 
-    def initialize(self, name: str, serial: None) -> None:
+    def initialize(self, name: str, serial: None, path: str) -> None:
         if serial is not None:
             raise ValueError("GelSight Mini does not expect a serial ID")
 
         self.name = name
         self.settings["Name"] = name
+        self.settings["path"] = path
         self.gelsight = gsdevice.Camera(dev_type=self.device_type)
 
     def connect(self):
@@ -47,16 +50,29 @@ class GelsightMiniSensor(TouchSensor):
         else:
             raise ValueError("attr did not match any available attribute.")
 
-    def show(self, attr: Streams, value: Any = None) -> Any:
+    def show(self, attr: Streams, recording: bool = False) -> Any:
         if attr == Streams.FRAME:
-            if value is not None:
-                raise TypeError(f"When reading frames, expected value must be None but found {value} instead")
+            fps = self.get(attr=SetOptions.FPS)
+            interval = 1.0 / fps
 
-            while True:
-                frame = self.gelsight.get_image()
-                cv2.imshow('Image', frame)
-                if cv2.waitKey(1) == 27:
-                    break
+            with ImageWriter(file_path=self.settings["path"], fps=fps) as recorder:
+                while True:
+                    start_time = time.time()  # Record the start time
+                    image = self.read(attr=Streams.FRAME)
+
+                    if recording:
+                        recorder.save(image)
+
+                    cv2.imshow('Image', image.as_cv2())
+
+                    if cv2.waitKey(1) == 27:  # Break loop if Esc key is pressed
+                        break
+
+                    elapsed_time = time.time() - start_time
+                    time_to_sleep = interval - elapsed_time
+                    if time_to_sleep > 0:
+                        time.sleep(time_to_sleep)
+
             cv2.destroyAllWindows()
 
         else:

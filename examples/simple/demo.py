@@ -16,8 +16,8 @@ def run(cfg: DictConfig):
     # Create a sensor object
     sensor = OpentouchInterface(TouchSensor.SensorType[cfg.sensor.type])
 
-    # Initialize the sensor with name and serial ID
-    sensor.initialize(name=cfg.sensor.name, serial=cfg.sensor.serial_id)
+    # Initialize the sensor with name, serial ID and path for reading and storing sensor data
+    sensor.initialize(name=cfg.sensor.name, serial=cfg.sensor.serial_id, path=cfg.sensor.path)
 
     # Connect to the sensor
     sensor.connect()
@@ -30,7 +30,7 @@ def run(cfg: DictConfig):
     sensor.set(SetOptions.FPS, value=cfg.sensor.fps)
 
     # Display a video stream of the sensor data
-    sensor.show(Streams[cfg.sensor.stream])
+    sensor.show(attr=Streams[cfg.sensor.stream], recording=cfg.sensor.recording)
 
     # Close the connection to the sensor
     sensor.disconnect()

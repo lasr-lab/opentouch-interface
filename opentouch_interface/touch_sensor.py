@@ -1,6 +1,12 @@
+import time
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
+
+import cv2
+
+from opentouch_interface.dataclasses.image import ImageWriter
+from opentouch_interface.options import Streams, SetOptions
 
 
 class TouchSensor(ABC):
@@ -10,22 +16,25 @@ class TouchSensor(ABC):
     Concrete sensor implementations can extend this interface to provide
     specific functionalities for different touch sensor.
     """
+
     class SensorType(Enum):
         DIGIT = "Digit"
         GELSIGHT_MINI = "Gelsight Mini"
+        FILE = "File"
 
     def __init__(self, sensor_type: SensorType):
         self.sensor_type = sensor_type
         self.settings = {}
 
     @abstractmethod
-    def initialize(self, name: str, value: Any) -> None:
+    def initialize(self, name: str, serial: str, path: str) -> None:
         """
         Initializes the sensor.
 
         Args:
             name (str): The name or identifier for the sensor.
-            value (Any): An optional initial value for the sensor (e.g., its serial number)
+            serial (str): An optional initial value for the sensor (e.g., its serial number)
+            path (str): Where should data be stored to or loaded from?
         """
         pass
 
@@ -66,14 +75,14 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def show(self, attr: Enum, value: Any = None) -> Any:
+    def show(self, attr: Enum, recording: bool = False) -> Any:
         """
         Provides a way to display the value of a specific data stream
         (implementation might vary depending on the sensor type).
 
         Args:
             attr (str): The name of the data stream to display (e.g., "frame").
-            value (Any, optional): Specify showing settings.
+            recording (Any, optional): Specify showing settings.
         """
         pass
 
