@@ -42,7 +42,7 @@ pip install git+ssh://git@github.com/gelsightinc/gsrobotics.git
 To start the web interface, run:
 
 ```bash
-streamlit run visualization/viewer.py 
+opentouch-dashboard
 ```
 If errors occur, we recommend physically reconnecting your sensors as well as restarting the Streamlit application.
 

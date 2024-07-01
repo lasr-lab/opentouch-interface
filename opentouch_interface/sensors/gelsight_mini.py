@@ -13,8 +13,8 @@ from gelsight import gsdevice
 
 
 class GelsightMiniSensor(TouchSensor):
-    def __init__(self, sensor_type: TouchSensor.SensorType):
-        super().__init__(sensor_type)
+    def __init__(self):
+        super().__init__(TouchSensor.SensorType.GELSIGHT_MINI)
         self.gelsight = None
         self.name = None
         self.device_type = "GelSight Mini"

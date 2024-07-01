@@ -1,11 +1,11 @@
 import random
-from abc import abstractmethod
 
 import streamlit as st
 from opentouch_interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
 from streamlit.delta_generator import DeltaGenerator
+
+from opentouch_interface.dashboard.viewer.viewer_factory import ViewerFactory
 
 st.set_page_config(
     page_title="Opentouch Viewer",
@@ -15,69 +15,6 @@ st.set_page_config(
 
 top = st.empty()
 top_divider = st.empty()
-
-
-class ViewerFactory:
-    def __new__(cls, sensor, sensor_type: 'TouchSensor.SensorType', *args, **kwargs):
-        if sensor_type == TouchSensor.SensorType.DIGIT:
-            return DigitViewer(sensor)
-        elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-            return GelsightMiniViewer(sensor)
-        else:
-            raise ValueError(f'Invalid sensor type {sensor_type}')
-
-
-class Viewer:
-    def __init__(self, sensor: TouchSensor):
-        self.sensor: TouchSensor = sensor
-        self.image_widget = None
-        self.dg = None
-        self.left = None
-        self.right = None
-
-    @abstractmethod
-    def render_options(self):
-        pass
-
-    def get_frame(self):
-        return self.sensor.read(Streams.FRAME).as_cv2()
-
-    def update_delta_generator(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
-        self.dg = dg
-        self.left = left
-        self.right = right
-        self.image_widget = self.left.image([])
-
-    def render_frame(self):
-        frame = self.get_frame()
-        self.image_widget.image(frame)
-
-
-class DigitViewer(Viewer):
-
-    def __init__(self, sensor: TouchSensor):
-        super().__init__(sensor)
-
-    def render_options(self):
-        self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
-        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"),
-                                          key=f"Resolution_{self.sensor.settings['Name']}")
-        fps = self.right.selectbox("FPS", ("30", "60"), key=f"FPS_{self.sensor.settings['Name']}")
-        intensity = self.right.slider("Brightness", 0, 15, 15, key=f"Brightness_{self.sensor.settings['Name']}")
-        self.dg.divider()
-
-        self.sensor.set(SetOptions.INTENSITY, value=int(intensity))
-        self.sensor.set(SetOptions.RESOLUTION, value=resolution)
-        self.sensor.set(SetOptions.FPS, value=int(fps))
-
-
-class GelsightMiniViewer(Viewer):
-    def __init__(self, sensor: TouchSensor):
-        super().__init__(sensor)
-
-    def render_options(self):
-        self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
-        self.dg.divider()
 
 
 def render_sidebar():

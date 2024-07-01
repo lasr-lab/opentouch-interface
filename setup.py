@@ -7,6 +7,11 @@ setup(
     install_requires=[
         'streamlit', 'numpy', 'torch', 'h5py', 'opencv-python'
     ],
+    entry_points={
+            'console_scripts': [
+                'opentouch-dashboard = opentouch_interface.dashboard.start:main'
+            ],
+        },
     author='Roberto Calandra',
     author_email='rcalandra@lasr.org',
     description='Description of your package',

@@ -87,4 +87,3 @@ class ImageReader:
             return next_image
         else:
             return None
-

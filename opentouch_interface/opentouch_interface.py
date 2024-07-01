@@ -8,10 +8,10 @@ class OpentouchInterface:
 
     def __new__(cls, sensor_type: 'TouchSensor.SensorType', *args, **kwargs):
         if sensor_type == TouchSensor.SensorType.DIGIT:
-            return DigitSensor(TouchSensor.SensorType.DIGIT)
+            return DigitSensor()
         elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-            return GelsightMiniSensor(TouchSensor.SensorType.GELSIGHT_MINI)
+            return GelsightMiniSensor()
         elif sensor_type == TouchSensor.SensorType.FILE:
-            return FileSensor(TouchSensor.SensorType.FILE)
+            return FileSensor()
         else:
             raise ValueError(f'Invalid sensor type {sensor_type}')

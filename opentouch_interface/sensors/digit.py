@@ -13,8 +13,8 @@ import warnings
 
 
 class DigitSensor(TouchSensor):
-    def __init__(self, sensor_type: TouchSensor.SensorType):
-        super().__init__(sensor_type)
+    def __init__(self):
+        super().__init__(TouchSensor.SensorType.DIGIT)
         self.digit = None
 
     def initialize(self, name: str, serial: str, path: str) -> None:

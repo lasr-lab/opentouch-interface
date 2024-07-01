@@ -7,8 +7,8 @@ import cv2
 
 
 class FileSensor(TouchSensor):
-    def __init__(self, sensor_type: TouchSensor.SensorType):
-        super().__init__(sensor_type)
+    def __init__(self):
+        super().__init__(TouchSensor.SensorType.FILE)
         self.sensor = None
         self.frames = []
         self.current_frame_index = 0
