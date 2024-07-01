@@ -40,7 +40,7 @@ class Viewer:
         pass
 
     def get_frame(self):
-        return self.sensor.read(Streams.FRAME)
+        return self.sensor.read(Streams.FRAME).as_cv2()
 
     def update_delta_generator(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
         self.dg = dg
@@ -130,7 +130,7 @@ def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
     if not exists:
         print(f"Added {name} to sensors")
         sensor = OpentouchInterface(sensor_type=sensor_type)
-        sensor.initialize(name=name, serial=serial)
+        sensor.initialize(name=name, serial=serial, path="")
         sensor.connect()
 
         viewer = ViewerFactory(sensor, sensor_type)

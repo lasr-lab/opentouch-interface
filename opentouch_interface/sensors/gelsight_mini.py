@@ -1,17 +1,18 @@
+import pprint
 import time
 import warnings
 from typing import Any
 
 import cv2
+import numpy as np
 
-from opentouch_interface.dataclasses.image import ImageWriter
+from opentouch_interface.dataclasses.image import ImageWriter, Image
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
 from gelsight import gsdevice
 
 
 class GelsightMiniSensor(TouchSensor):
-
     def __init__(self, sensor_type: TouchSensor.SensorType):
         super().__init__(sensor_type)
         self.gelsight = None
@@ -27,8 +28,35 @@ class GelsightMiniSensor(TouchSensor):
         self.settings["path"] = path
         self.gelsight = gsdevice.Camera(dev_type=self.device_type)
 
-    def connect(self):
-        return self.gelsight.connect()
+    def connect(self) -> None:
+        self.gelsight.connect()
+
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Image:
+        fps = self.get(SetOptions.FPS)
+        if fps is None:
+            raise ValueError("FPS setting must be set before calibrating.")
+
+        interval = 1.0 / fps
+
+        # Skip the initial frames
+        for _ in range(skip_frames):
+            self.read(attr=Streams.FRAME)
+            time.sleep(interval)  # Sleep for the time determined by FPS
+
+        # Collect frames after skipping
+        frames = []
+        for _ in range(num_frames):
+            image = self.read(attr=Streams.FRAME)
+            frames.append(image.as_cv2())
+            time.sleep(interval)  # Sleep for the time determined by FPS
+
+        # Calculate the average frame
+        average_frame = np.mean(frames, axis=0).astype(np.uint8)
+        average_image = Image(image=average_frame, rotation=(0, 1, 2))
+
+        self.settings["calibration_reference"] = average_image
+
+        return average_image
 
     def set(self, attr: SetOptions, value: Any = None) -> Any:
         if value is not None:
@@ -50,7 +78,7 @@ class GelsightMiniSensor(TouchSensor):
         else:
             raise ValueError("attr did not match any available attribute.")
 
-    def show(self, attr: Streams, recording: bool = False) -> Any:
+    def show(self, attr: Streams, recording: bool = False) -> None:
         if attr == Streams.FRAME:
             fps = self.get(attr=SetOptions.FPS)
             interval = 1.0 / fps
@@ -77,6 +105,12 @@ class GelsightMiniSensor(TouchSensor):
 
         else:
             raise ValueError("attr did not match any available attribute.")
+
+    def info(self, verbose: bool = True):
+        if verbose:
+            pprint.pprint(self.settings)
+
+        return self.settings
 
     def disconnect(self):
         pass

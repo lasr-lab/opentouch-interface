@@ -1,3 +1,4 @@
+import pprint
 from typing import Any
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
@@ -6,7 +7,6 @@ import cv2
 
 
 class FileSensor(TouchSensor):
-
     def __init__(self, sensor_type: TouchSensor.SensorType):
         super().__init__(sensor_type)
         self.sensor = None
@@ -14,17 +14,18 @@ class FileSensor(TouchSensor):
         self.current_frame_index = 0
         self.settings = {}
 
-    def initialize(self, name: str, serial: str, path: str) -> ImageReader:
-        reader = ImageReader(file_path=path)
-        self.sensor = reader
-        self.frames = self.sensor.read_from_file()
+    def initialize(self, name: str, serial: str, path: str) -> None:
+        self.sensor = ImageReader(file_path=path)
+        self.frames = self.sensor.get_all()
 
         self.settings["Name"] = name
         self.settings["File path"] = serial
         self.settings["path"] = path
-        return self.sensor
 
     def connect(self):
+        pass
+
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> None:
         pass
 
     def set(self, attr: SetOptions, value: Any) -> Any:
@@ -55,6 +56,12 @@ class FileSensor(TouchSensor):
                 else:
                     break
             cv2.destroyAllWindows()
+
+    def info(self, verbose: bool = True):
+        if verbose:
+            pprint.pprint(self.settings)
+
+        return self.settings
 
     def disconnect(self):
         pass

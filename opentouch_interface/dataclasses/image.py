@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 import torch
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 
 class Image:
@@ -55,13 +55,15 @@ class ImageReader:
     def __init__(self, file_path: str):
         self.file_path = file_path
         self.frames = []
-        self.fps = self._read_fps_from_file()  # Initialize FPS by reading from file
+        self.current_index = 0
+        self.fps = self._read_fps_from_file()
+        self._load_data()
 
     def _read_fps_from_file(self) -> int:
         with h5py.File(self.file_path, 'r') as hf:
             return hf.attrs.get('fps', 30)  # Read FPS from file, default to 30 if not found
 
-    def read_from_file(self) -> List[Image]:
+    def _load_data(self) -> List[Image]:
         images = []
         with h5py.File(self.file_path, 'r') as hf:
             if 'frames' in hf:
@@ -72,4 +74,17 @@ class ImageReader:
                         images.append(Image(img_data, (0, 1, 2)))
 
         self.frames = images
+        self.current_index = 0  # Reset index after reading all images
         return images
+
+    def get_all(self) -> List[Image]:
+        return self.frames
+
+    def get_next(self) -> Optional[Image]:
+        if self.current_index < len(self.frames):
+            next_image = self.frames[self.current_index]
+            self.current_index += 1
+            return next_image
+        else:
+            return None
+

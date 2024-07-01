@@ -22,12 +22,18 @@ def run(cfg: DictConfig):
     # Connect to the sensor
     sensor.connect()
 
+    # Calibrate sensor
+    sensor.calibrate()
+
     # Set lighting intensity
     sensor.set(SetOptions.INTENSITY, value=cfg.sensor.lighting)
 
     # Set camera resolution and frame rate
     sensor.set(SetOptions.RESOLUTION, value=cfg.sensor.resolution)
     sensor.set(SetOptions.FPS, value=cfg.sensor.fps)
+
+    # Display information about sensor
+    sensor.info()
 
     # Display a video stream of the sensor data
     sensor.show(attr=Streams[cfg.sensor.stream], recording=cfg.sensor.recording)

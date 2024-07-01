@@ -5,10 +5,7 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        'streamlit',
-        'numpy',
-        'torch',
-        'h5py'
+        'streamlit', 'numpy', 'torch', 'h5py', 'opencv-python'
     ],
     author='Roberto Calandra',
     author_email='rcalandra@lasr.org',

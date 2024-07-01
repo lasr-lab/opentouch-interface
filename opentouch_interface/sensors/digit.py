@@ -1,7 +1,9 @@
+import pprint
 import time
 from typing import Any, Dict, List
 
 import cv2
+import numpy as np
 
 from opentouch_interface.options import SetOptions, Streams
 from opentouch_interface.touch_sensor import TouchSensor
@@ -11,20 +13,19 @@ import warnings
 
 
 class DigitSensor(TouchSensor):
-
     def __init__(self, sensor_type: TouchSensor.SensorType):
         super().__init__(sensor_type)
         self.digit = None
 
-    def initialize(self, name: str, serial: str, path: str) -> Digit:
+    def initialize(self, name: str, serial: str, path: str) -> None:
         self.digit = Digit(serial=serial, name=name)
         self.settings["Name"] = name
         self.settings["Serial ID"] = serial
         self.settings["path"] = path
-        return self.digit
 
     def connect(self):
         self.digit.connect()
+        self.settings[SetOptions.FPS] = self.digit.fps
 
     def set(self, attr: SetOptions, value: Any) -> Any:
         # Set resolution
@@ -111,6 +112,39 @@ class DigitSensor(TouchSensor):
 
         else:
             raise ValueError("attr did not match any available attribute.")
+
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Image:
+        fps = self.get(SetOptions.FPS)
+        if fps is None:
+            raise ValueError("FPS setting must be set before calibrating.")
+
+        interval = 1.0 / fps
+
+        # Skip the initial frames
+        for _ in range(skip_frames):
+            self.read(attr=Streams.FRAME)
+            time.sleep(interval)  # Sleep for the time determined by FPS
+
+        # Collect frames after skipping
+        frames = []
+        for _ in range(num_frames):
+            image = self.read(attr=Streams.FRAME)
+            frames.append(image.as_cv2())
+            time.sleep(interval)  # Sleep for the time determined by FPS
+
+        # Calculate the average frame
+        average_frame = np.mean(frames, axis=0).astype(np.uint8)
+        average_image = Image(image=average_frame, rotation=(0, 1, 2))
+
+        self.settings["calibration_reference"] = average_image
+
+        return average_image
+
+    def info(self, verbose: bool = True):
+        if verbose:
+            pprint.pprint(self.settings)
+
+        return self.settings
 
     def disconnect(self):
         self.digit.disconnect()
