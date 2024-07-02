@@ -1,10 +1,13 @@
-from opentouch_interface.dashboard.viewer.viewer_factory import ViewerFactory
+from opentouch_interface.dashboard.viewer.factory import ViewerFactory
 from opentouch_interface.opentouch_interface import OpentouchInterface
 from opentouch_interface.touch_sensor import TouchSensor
 import streamlit as st
 
 
 class Sidebar:
+    """
+    Class for rendering the sidebar for sensor selection and configuration.
+    """
     def __init__(self):
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
@@ -12,6 +15,9 @@ class Sidebar:
         }
 
     def render(self):
+        """
+        Render the sidebar with options to add sensors.
+        """
         st.sidebar.markdown('### Add Sensor')
         selected_sensor = st.sidebar.selectbox(
             label="Select sensor",
@@ -41,22 +47,25 @@ class Sidebar:
                 use_container_width=True,
                 type="primary",
                 disabled=(selected_sensor == TouchSensor.SensorType.DIGIT and not serial),
-                on_click=add_viewer, args=(selected_sensor, name, serial))
+                on_click=self.add_viewer, args=(selected_sensor, name, serial))
 
+    @staticmethod
+    def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
+        """
+        Add a new viewer for the selected sensor.
+        """
+        if 'viewers' not in st.session_state:
+            st.session_state.viewers = []
 
-def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
-    if 'viewers' not in st.session_state:
-        st.session_state.viewers = []
+        exists = False
+        for viewer in st.session_state.viewers:
+            exists = exists or (viewer.sensor.settings['Name'] == name)
 
-    exists = False
-    for viewer in st.session_state.viewers:
-        exists = exists or (viewer.sensor.settings['Name'] == name)
+        if not exists:
+            print(f"Added {name} to sensors")
+            sensor = OpentouchInterface(sensor_type=sensor_type)
+            sensor.initialize(name=name, serial=serial, path="")
+            sensor.connect()
 
-    if not exists:
-        print(f"Added {name} to sensors")
-        sensor = OpentouchInterface(sensor_type=sensor_type)
-        sensor.initialize(name=name, serial=serial, path="")
-        sensor.connect()
-
-        viewer = ViewerFactory(sensor, sensor_type)
-        st.session_state.viewers.append(viewer)
+            viewer = ViewerFactory(sensor, sensor_type)
+            st.session_state.viewers.append(viewer)

@@ -1,8 +1,8 @@
 import streamlit as st
 
-from opentouch_interface.dashboard.viewer.main_page import MainPage
-from opentouch_interface.dashboard.viewer.sidebar import Sidebar
-from opentouch_interface.dashboard.viewer.task_manager import TaskManager
+from viewer.main_page import MainPage
+from viewer.sidebar import Sidebar
+from viewer.task_manager import TaskManager
 
 st.set_page_config(
     page_title="Opentouch Viewer",
@@ -18,6 +18,10 @@ top_divider.divider()
 
 
 def main():
+    """
+    Main function to set up the Streamlit app, initialize the TaskManager, Sidebar, and MainPage,
+    and register their respective tasks.
+    """
     task_manager = TaskManager()
     sidebar = Sidebar()
     main_page = MainPage()
