@@ -3,8 +3,8 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 import time
 
-from opentouch_interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.options import SetOptions, Streams
+from opentouch_interface.interface.opentouch_interface import OpentouchInterface
+from opentouch_interface.interface.options import SetOptions, Streams
 from digit_interface.digit import Digit
 
 from cv_bridge import CvBridge

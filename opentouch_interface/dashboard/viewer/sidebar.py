@@ -1,6 +1,6 @@
 from opentouch_interface.dashboard.viewer.factory import ViewerFactory
-from opentouch_interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.opentouch_interface import OpentouchInterface
+from opentouch_interface.interface.touch_sensor import TouchSensor
 import streamlit as st
 
 

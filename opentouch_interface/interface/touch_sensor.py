@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
-from opentouch_interface.options import SetOptions, Streams
+from opentouch_interface.interface.options import SetOptions, Streams
 
 
 class TouchSensor(ABC):

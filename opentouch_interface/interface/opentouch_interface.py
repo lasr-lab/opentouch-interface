@@ -1,7 +1,7 @@
-from opentouch_interface.sensors.digit import DigitSensor
-from opentouch_interface.sensors.file_sensor import FileSensor
-from opentouch_interface.sensors.gelsight_mini import GelsightMiniSensor
-from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.sensors.digit import DigitSensor
+from opentouch_interface.interface.sensors.file_sensor import FileSensor
+from opentouch_interface.interface.sensors.gelsight_mini import GelsightMiniSensor
+from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class OpentouchInterface:

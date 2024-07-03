@@ -2,8 +2,8 @@ from abc import abstractmethod, ABC
 
 from streamlit.delta_generator import DeltaGenerator
 
-from opentouch_interface.options import Streams
-from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.options import Streams
+from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class BaseViewer(ABC):

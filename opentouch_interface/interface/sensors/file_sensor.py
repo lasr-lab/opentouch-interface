@@ -1,8 +1,8 @@
 import pprint
 from typing import Any
-from opentouch_interface.options import SetOptions, Streams
-from opentouch_interface.touch_sensor import TouchSensor
-from opentouch_interface.dataclasses.image import Image, ImageReader
+from opentouch_interface.interface.options import SetOptions, Streams
+from opentouch_interface.interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.dataclasses.image import Image, ImageReader
 import cv2
 
 

@@ -5,9 +5,9 @@ from typing import Any, Dict, List
 import cv2
 import numpy as np
 
-from opentouch_interface.options import SetOptions, Streams
-from opentouch_interface.touch_sensor import TouchSensor
-from opentouch_interface.dataclasses.image import Image, ImageWriter
+from opentouch_interface.interface.options import SetOptions, Streams
+from opentouch_interface.interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.dataclasses.image import Image, ImageWriter
 from digit_interface.digit import Digit
 import warnings
 

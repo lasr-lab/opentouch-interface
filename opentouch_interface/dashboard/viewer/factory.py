@@ -1,6 +1,6 @@
 from opentouch_interface.dashboard.viewer.sensors.digit_viewer import DigitViewer
 from opentouch_interface.dashboard.viewer.sensors.gelsight_mini_viewer import GelsightMiniViewer
-from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class ViewerFactory:

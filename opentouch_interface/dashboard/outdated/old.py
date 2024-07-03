@@ -2,9 +2,9 @@ import random
 from abc import abstractmethod
 
 import streamlit as st
-from opentouch_interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.options import SetOptions, Streams
-from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.opentouch_interface import OpentouchInterface
+from opentouch_interface.interface.options import SetOptions, Streams
+from opentouch_interface.interface.touch_sensor import TouchSensor
 from streamlit.delta_generator import DeltaGenerator
 
 st.set_page_config(

@@ -1,5 +1,5 @@
 from opentouch_interface.dashboard.viewer.base_viewer import BaseViewer
-from opentouch_interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class GelsightMiniViewer(BaseViewer):
