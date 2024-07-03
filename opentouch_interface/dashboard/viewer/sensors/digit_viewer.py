@@ -1,6 +1,6 @@
 from opentouch_interface.dashboard.viewer.base_viewer import BaseViewer
 
-from opentouch_interface.interface.options import SetOptions
+from opentouch_interface.interface.options import SensorSettings
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
@@ -8,6 +8,7 @@ class DigitViewer(BaseViewer):
     """
     Viewer class for Digit sensor.
     """
+
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor)
 
@@ -15,13 +16,25 @@ class DigitViewer(BaseViewer):
         """
         Render options specific to the Digit sensor.
         """
-        self.right.markdown(f"## Settings for {self.sensor.settings['Name']}")
-        resolution = self.right.selectbox("Resolution", ("QVGA", "VGA"),
-                                          key=f"Resolution_{self.sensor.settings['Name']}")
-        fps = self.right.selectbox("FPS", ("30", "60"), key=f"FPS_{self.sensor.settings['Name']}")
-        intensity = self.right.slider("Brightness", 0, 15, 15, key=f"Brightness_{self.sensor.settings['Name']}")
-        self.dg.divider()
+        sensor_name = self.sensor.settings[SensorSettings.SENSOR_NAME]
 
-        self.sensor.set(SetOptions.INTENSITY, value=int(intensity))
-        self.sensor.set(SetOptions.RESOLUTION, value=resolution)
-        self.sensor.set(SetOptions.FPS, value=int(fps))
+        # Render heading with sensor name
+        self.right.markdown(f"## Settings for {sensor_name}")
+
+        # Render resolution selection
+        streams_key = f"streams_{sensor_name}"
+        streams_options = ("QVGA, 30 FPS", "VGA, 60 FPS")
+        streams = self.right.selectbox("Resolution", streams_options, key=streams_key)
+
+        # Parse selected resolution and FPS
+        resolution, fps = streams.split(", ")
+        fps = int(fps.split()[0])
+
+        # Render brightness slider
+        brightness_key = f"Brightness_{sensor_name}"
+        intensity = self.right.slider("Brightness", 0, 15, 15, key=brightness_key)
+
+        # Set sensor settings based on user selections
+        self.sensor.set(SensorSettings.INTENSITY, value=int(intensity))
+        self.sensor.set(SensorSettings.RESOLUTION, value=resolution)
+        self.sensor.set(SensorSettings.FPS, value=fps)

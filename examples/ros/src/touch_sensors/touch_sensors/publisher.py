@@ -4,7 +4,7 @@ from sensor_msgs.msg import Image
 import time
 
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.interface.options import SetOptions, Streams
+from opentouch_interface.interface.options import SensorSettings, DataStream
 from digit_interface.digit import Digit
 
 from cv_bridge import CvBridge
@@ -23,15 +23,15 @@ class SensorPublisher(Node):
         self.sensor = OpentouchInterface(OpentouchInterface.SensorType.DIGIT)
         self.sensor.initialize("Left Gripper", "D20804")
         self.sensor.connect()
-        self.sensor.set(SetOptions.INTENSITY, Digit.LIGHTING_MAX)
-        self.sensor.set(SetOptions.RESOLUTION, Digit.STREAMS["QVGA"])
-        self.sensor.set(SetOptions.FPS, Digit.STREAMS["QVGA"]["fps"][f"{fps}fps"])
+        self.sensor.set(SensorSettings.INTENSITY, Digit.LIGHTING_MAX)
+        self.sensor.set(SensorSettings.RESOLUTION, Digit.STREAMS["QVGA"])
+        self.sensor.set(SensorSettings.FPS, Digit.STREAMS["QVGA"]["fps"][f"{fps}fps"])
 
         self.call_count = 0
         self.last_time = time.time()
 
     def timer_callback(self):
-        image = bridge.cv2_to_imgmsg(self.sensor.read(Streams.FRAME), encoding="bgr8")
+        image = bridge.cv2_to_imgmsg(self.sensor.read(DataStream.FRAME), encoding="bgr8")
         self.publisher_.publish(image)
 
 

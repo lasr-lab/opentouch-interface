@@ -86,4 +86,16 @@ class ImageReader:
             self.current_index += 1
             return next_image
         else:
-            return None
+            return self._get_black_image()
+
+    def _get_black_image(self) -> Image:
+        # Create a black image of the same dimensions as the last read image
+        if self.frames:
+            last_image = self.frames[-1]
+            black_image = np.zeros_like(last_image.as_cv2())
+            return Image(black_image, (0, 1, 2))
+        else:
+            # If no images were read at all, return a default-sized black image
+            default_size = (640, 480, 3)  # Example default size
+            black_image = np.zeros(default_size, dtype=np.uint8)
+            return Image(black_image, (0, 1, 2))

@@ -31,11 +31,10 @@ class MainPage:
         Update the delta generator for each viewer.
         """
         dg = self.get_clean_rendering_container(app_state=f"{random.random()}")
-        left, right = dg.container().columns(2)
 
         if 'viewers' in st.session_state:
             for viewer in st.session_state.viewers:
-                viewer.update_delta_generator(dg, left, right)
+                viewer.update_delta_generator(dg)
 
     @staticmethod
     def get_clean_rendering_container(app_state: str) -> DeltaGenerator:

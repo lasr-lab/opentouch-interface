@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 import streamlit as st
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.interface.options import SetOptions, Streams
+from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from streamlit.delta_generator import DeltaGenerator
 
@@ -40,7 +40,7 @@ class Viewer:
         pass
 
     def get_frame(self):
-        return self.sensor.read(Streams.FRAME)
+        return self.sensor.read(DataStream.FRAME)
 
     def update_delta_generator(self, dg: DeltaGenerator, left: DeltaGenerator, right: DeltaGenerator):
         self.dg = dg
@@ -67,9 +67,9 @@ class DigitViewer(Viewer):
         intensity = self.right.slider("Brightness", 0, 15, 15, key=f"Brightness_{self.sensor.settings['Name']}")
         self.dg.divider()
 
-        self.sensor.set(SetOptions.INTENSITY, value=int(intensity))
-        self.sensor.set(SetOptions.RESOLUTION, value=resolution)
-        self.sensor.set(SetOptions.FPS, value=int(fps))
+        self.sensor.set(SensorSettings.INTENSITY, value=int(intensity))
+        self.sensor.set(SensorSettings.RESOLUTION, value=resolution)
+        self.sensor.set(SensorSettings.FPS, value=int(fps))
 
 
 class GelsightMiniViewer(Viewer):

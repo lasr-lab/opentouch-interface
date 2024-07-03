@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
-from opentouch_interface.interface.options import SetOptions, Streams
+from opentouch_interface.interface.options import SensorSettings, DataStream
 
 
 class TouchSensor(ABC):
@@ -61,7 +61,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def set(self, attr: SetOptions, value: Any) -> Any:
+    def set(self, attr: SensorSettings, value: Any) -> Any:
         """
         Set a specific attribute of the touch sensor.
 
@@ -72,7 +72,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def get(self, attr: SetOptions) -> Any:
+    def get(self, attr: SensorSettings) -> Any:
         """
         Get a specific attribute of the touch sensor.
 
@@ -82,7 +82,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def read(self, attr: Streams, value: Any = None) -> Any:
+    def read(self, attr: DataStream, value: Any = None) -> Any:
         """
         Read data from the touch sensor.
 
@@ -93,7 +93,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def show(self, attr: Streams, recording: bool = False) -> None:
+    def show(self, attr: DataStream, recording: bool = False) -> None:
         """
         Show the data stream from the touch sensor.
 

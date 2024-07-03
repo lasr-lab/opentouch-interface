@@ -11,7 +11,8 @@ class Sidebar:
     def __init__(self):
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
-            "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI
+            "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
+            "File": TouchSensor.SensorType.FILE
         }
 
     def render(self):
@@ -21,7 +22,7 @@ class Sidebar:
         st.sidebar.markdown('### Add Sensor')
         selected_sensor = st.sidebar.selectbox(
             label="Select sensor",
-            options=("Digit", "Gelsight Mini"),
+            options=("Digit", "Gelsight Mini", "File"),
             placeholder="Sensor type",
             index=None,
             label_visibility="collapsed")
@@ -36,6 +37,14 @@ class Sidebar:
                 placeholder="Serial ID",
                 label_visibility="collapsed")
 
+        if selected_sensor == TouchSensor.SensorType.FILE:
+            path = st.sidebar.text_input(
+                label="Specify path",
+                placeholder="example.h5",
+                label_visibility="collapsed")
+        else:
+            path = ""
+
         if selected_sensor:
             name = st.sidebar.text_input(
                 label="Sensor name",
@@ -47,10 +56,10 @@ class Sidebar:
                 use_container_width=True,
                 type="primary",
                 disabled=(selected_sensor == TouchSensor.SensorType.DIGIT and not serial),
-                on_click=self.add_viewer, args=(selected_sensor, name, serial))
+                on_click=self.add_viewer, args=(selected_sensor, name, serial, path))
 
     @staticmethod
-    def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str):
+    def add_viewer(sensor_type: TouchSensor.SensorType, name: str, serial: str, path: str):
         """
         Add a new viewer for the selected sensor.
         """
@@ -64,7 +73,7 @@ class Sidebar:
         if not exists:
             print(f"Added {name} to sensors")
             sensor = OpentouchInterface(sensor_type=sensor_type)
-            sensor.initialize(name=name, serial=serial, path="")
+            sensor.initialize(name=name, serial=serial, path=path)
             sensor.connect()
 
             viewer = ViewerFactory(sensor, sensor_type)
