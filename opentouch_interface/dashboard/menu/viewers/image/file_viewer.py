@@ -1,14 +1,9 @@
-from opentouch_interface.dashboard.viewer.base_viewer import BaseViewer
-
+from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.interface.options import SensorSettings
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
-class FileViewer(BaseViewer):
-    """
-    Viewer class for Digit sensor.
-    """
-
+class FileViewer(BaseImageViewer):
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor)
 
@@ -20,3 +15,9 @@ class FileViewer(BaseViewer):
 
         # Render heading with sensor name
         self.right.markdown(f"## Settings for {sensor_name}")
+
+        self.right.button(
+            label="Restart video",
+            on_click=self.sensor.sensor.restart(),
+            type="secondary"
+        )

@@ -3,8 +3,6 @@ import time
 import warnings
 from typing import Any
 
-import numpy as np
-
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from opentouch_interface.interface.dataclasses.image import Image, ImageReader
@@ -25,7 +23,7 @@ class FileSensor(TouchSensor):
             raise ValueError("A file sensor does not expect a serial ID")
 
         self.sensor = ImageReader(file_path=path)
-        self.frames = self.sensor.get_all()
+        self.frames = self.sensor.get_all_frames()
 
         self.settings[SensorSettings.SENSOR_NAME] = name
         self.settings[SensorSettings.PATH] = path
@@ -61,9 +59,7 @@ class FileSensor(TouchSensor):
 
         if attr == DataStream.FRAME:
             if self.sensor:
-                delay = 1 / self.sensor.fps
-                time.sleep(delay)  # Introduce the delay between frames
-                return self.sensor.get_next()
+                return self.sensor.get_next_frame_timed()
 
         else:
             warnings.warn("The provided attribute did not match any available attribute.\n")

@@ -6,7 +6,7 @@ from opentouch_interface.interface.options import DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
-class BaseViewer(ABC):
+class BaseImageViewer(ABC):
     """
     Abstract base class for viewers.
     """
@@ -17,6 +17,7 @@ class BaseViewer(ABC):
         self.left = None
         self.right = None
         self.container = None
+        self.title = None
 
     @abstractmethod
     def render_options(self):
@@ -33,6 +34,7 @@ class BaseViewer(ABC):
         Update the delta generator for rendering frames.
         """
         self.container = dg.container(border=True)
+        self.title = self.container.empty()
         self.left, self.right = self.container.columns(2)
         self.dg = dg
         self.image_widget = self.left.image([])
@@ -42,4 +44,5 @@ class BaseViewer(ABC):
         Render the current frame to the image widget.
         """
         frame = self.get_frame()
-        self.image_widget.image(frame)
+        if frame is not None and self.image_widget is not None:
+            self.image_widget.image(frame)
