@@ -5,7 +5,7 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        'streamlit', 'numpy', 'torch', 'h5py', 'opencv-python'
+        'streamlit', 'numpy', 'torch', 'h5py', 'opencv-python', 'PyYAML'
     ],
     entry_points={
             'console_scripts': [
