@@ -1,3 +1,4 @@
+import logging
 import pprint
 import time
 from typing import Any, Dict, List
@@ -15,7 +16,6 @@ import warnings
 class DigitSensor(TouchSensor):
     def __init__(self):
         super().__init__(TouchSensor.SensorType.DIGIT)
-        self.sensor = None
 
     def initialize(self, name: str, serial: str, path: str) -> None:
         self.sensor = Digit(serial=serial, name=name)
@@ -97,8 +97,12 @@ class DigitSensor(TouchSensor):
         if attr == DataStream.FRAME:
             if isinstance(value, bool) or value is None:
                 transpose = (value is not None) or value
-                frame = self.sensor.get_frame(transpose)
-                return Image(image=frame, rotation=(0, 1, 2))
+                try:
+                    frame = self.sensor.get_frame(transpose)
+                    return Image(image=frame, rotation=(0, 1, 2))
+                except Exception as e:
+                    logging.getLogger(__name__).error(e)
+                    return None
             else:
                 raise TypeError(f"Expected value must be of type bool but found {type(value)} instead\n")
 

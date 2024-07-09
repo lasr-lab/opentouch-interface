@@ -27,7 +27,10 @@ class BaseImageViewer(ABC):
         """
         Get the current frame from the sensor.
         """
-        return self.sensor.read(DataStream.FRAME).as_cv2()
+        frame = self.sensor.read(DataStream.FRAME)
+        if frame is not None:
+            return frame.as_cv2()
+        return None
 
     def update_delta_generator(self, dg: DeltaGenerator):
         """

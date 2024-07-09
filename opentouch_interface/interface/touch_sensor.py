@@ -25,6 +25,7 @@ class TouchSensor(ABC):
         :param sensor_type: The type of the touch sensor (e.g., DIGIT, GELSIGHT_MINI, FILE).
         """
         self.sensor_type = sensor_type
+        self.sensor = None
         self.settings = {}
 
     @abstractmethod
