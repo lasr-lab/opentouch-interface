@@ -1,6 +1,7 @@
 import pprint
 import warnings
-from typing import Any
+from io import BytesIO
+from typing import Any, Union
 
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
@@ -15,16 +16,15 @@ class FileSensor(TouchSensor):
         self.current_frame_index = 0
         self.settings = {}
 
-    def initialize(self, name: str, serial: str, path: str) -> None:
+    def initialize(self, name: str, serial: str, path_or_file: Union[str, BytesIO]) -> None:
         if serial is not None:
-            print(type(serial))
             raise ValueError("A file sensor does not expect a serial ID")
 
-        self.sensor = ImageReader(file_path=path)
+        self.sensor = ImageReader(file=path_or_file)
         self.frames = self.sensor.get_all_frames()
 
         self.settings[SensorSettings.SENSOR_NAME] = name
-        self.settings[SensorSettings.PATH] = path
+        self.settings[SensorSettings.PATH] = path_or_file
 
     def connect(self):
         pass

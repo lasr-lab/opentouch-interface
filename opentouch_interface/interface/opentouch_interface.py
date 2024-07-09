@@ -1,4 +1,5 @@
 from opentouch_interface.interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.sensors.file_sensor import FileSensor
 
 
 class OpentouchInterface:
@@ -18,15 +19,10 @@ class OpentouchInterface:
                 return GelsightMiniSensor()
             except ImportError as e:
                 raise ImportError("GelsightMiniSensor dependencies are not installed. Please install them using 'pip "
-                                  "install gelsight-mini-interface'") from e
+                                  "install git+ssh://git@github.com/gelsightinc/gsrobotics.git'") from e
 
         elif sensor_type == TouchSensor.SensorType.FILE:
-            try:
-                from opentouch_interface.interface.sensors.file_sensor import FileSensor
-                return FileSensor()
-            except ImportError as e:
-                raise ImportError("FileSensor dependencies are not installed. Please install them using 'pip install "
-                                  "file-sensor-interface'") from e
+            return FileSensor()
 
         else:
             raise ValueError(f'Invalid sensor type {sensor_type}')

@@ -1,5 +1,5 @@
 import os.path
-from io import StringIO
+from io import StringIO, BytesIO
 from typing import Optional
 from datetime import datetime
 
@@ -213,11 +213,9 @@ class SensorRegistry:
             sensor.initialize(name=name, serial=serial, path=path)
 
         elif sensor_type == TouchSensor.SensorType.FILE:
-            # Path has been specified using UploadedFile (and not config file)
-            if file is not None:
-                path = file.name
-
-            sensor.initialize(name=name, serial=serial, path=path)
+            file_or_path = BytesIO(file.getvalue()) if file is not None else path
+            print(type(file_or_path))
+            sensor.initialize(name=name, serial=serial, path_or_file=file_or_path)
 
         sensor.connect()
 

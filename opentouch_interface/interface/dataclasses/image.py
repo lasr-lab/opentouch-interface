@@ -1,9 +1,10 @@
 import time
+from io import BytesIO
 
 import numpy as np
 import h5py
 import torch
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Union
 
 
 class Image:
@@ -54,8 +55,13 @@ class ImageWriter:
 
 
 class ImageReader:
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+    def __init__(self, file: Union[str, BytesIO]):
+        if isinstance(file, str):
+            self.file_path = file
+            self.file = None
+        else:
+            self.file_path = None
+            self.file = file
         self.frames = []
         self.current_index = 0
         self.fps = self._read_fps()
@@ -64,12 +70,18 @@ class ImageReader:
         self.last_frame = None  # Last frame that was read
 
     def _read_fps(self) -> int:
-        with h5py.File(self.file_path, 'r') as hf:
+        with self._open_file() as hf:
             return hf.attrs.get('fps', 30)  # Read FPS from file, default to 30 if not found
+
+    def _open_file(self):
+        if self.file_path:
+            return h5py.File(self.file_path, 'r')
+        else:
+            return h5py.File(self.file, 'r')
 
     def _load_frames(self) -> List[Image]:
         images = []
-        with h5py.File(self.file_path, 'r') as hf:
+        with self._open_file() as hf:
             if 'frames' in hf:
                 group = hf['frames']
                 for key in group.keys():
