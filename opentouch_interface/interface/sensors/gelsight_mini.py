@@ -15,7 +15,6 @@ from gelsight import gsdevice
 class GelsightMiniSensor(TouchSensor):
     def __init__(self):
         super().__init__(TouchSensor.SensorType.GELSIGHT_MINI)
-        self.sensor = None
 
     def initialize(self, name: str, serial: None, path: str) -> None:
         if serial is not None:

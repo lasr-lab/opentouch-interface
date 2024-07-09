@@ -27,7 +27,9 @@ class DigitViewer(BaseImageViewer):
 
         # Render brightness slider
         brightness_key = f"Brightness_{sensor_name}"
-        intensity = self.right.slider("Brightness", 0, 15, 15, key=brightness_key)
+        current_brightness = max(0, min(int(self.sensor.get(SensorSettings.INTENSITY)), 15))
+        intensity = self.right.slider("Brightness", 0, 15, current_brightness,
+                                      key=brightness_key)
 
         # Set sensor settings based on user selections
         self.sensor.set(SensorSettings.INTENSITY, value=int(intensity))
