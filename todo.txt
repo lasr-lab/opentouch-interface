@@ -1,0 +1,7 @@
+# TODO: Central buffer (broadcasting capability, mutlithreaded, define frequency)
+# Define reading frequency --> python is sampling the sensor at that frequency
+# Buffer should be of size 1
+# TODO: Recording from interface (add groups)
+# TODO: Multi OS support (Windows, Linux, MacOS), Maybe just open PR
+# TODO: User should be able to call self defined workloads (e.g. NN or pixel tracking), talk to Simon
+# Saving must be multithreaded (maybe without central buffer?)
