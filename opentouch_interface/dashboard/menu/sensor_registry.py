@@ -214,7 +214,7 @@ class SensorRegistry:
 
         elif sensor_type == TouchSensor.SensorType.FILE:
             file_or_path = BytesIO(file.getvalue()) if file is not None else path
-            sensor.initialize(name=name, serial=serial, path_or_file=file_or_path)
+            sensor.initialize(name=name, serial=serial, path=file_or_path)
 
         sensor.connect()
 

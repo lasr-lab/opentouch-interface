@@ -39,7 +39,7 @@ pip install git+ssh://git@github.com/gelsightinc/gsrobotics.git
 
 ## Web Interface
 
-To start the web interface, run:
+After the OpenTouch Interface is installed, run the following command in your terminal to start the web interface (based on Streamlit):
 
 ```bash
 opentouch-dashboard
@@ -50,25 +50,19 @@ If errors occur, we recommend physically reconnecting your sensors as well as re
 
 ### Simple Example
 
-The script located at `examples/simple/demo.py` produces a continuous video stream from a touch sensor. For that, install the following requirements:
-
-```bash
-pip install hydra-core omegaconf --upgrade
-```
-
-To run this example, execute:
+The script located at `examples/simple/demo.py` produces a continuous video stream from a touch sensor. To run this example, execute:
 
 ```bash
 python examples/simple/demo.py
 ```
 
-By default, the script uses the Digit sensor. However, you can specify a different sensor by providing an argument (`digit` or `gelsight_mini`). For example:
+By default, the script uses the Digit sensor. However, you can specify a different sensor by providing an argument (`digit`, `gelsight_mini` or `file`). For example:
 
 ```bash
-python examples/simple/demo.py sensor=gelsight_mini
+python examples/simple/demo.py sensor=file
 ```
 
-Sensor settings can be customized in the corresponding `.yaml` file located in `examples/conf/sensor`. Note that not all sensors support every setting. Unsupported settings should be set to `null`.
+Sensor settings can be customized in the corresponding `.yaml` file located in `examples/conf/sensor`. There you also find an extensive overview which sensors require and allow which settings.
 
 For sensors that require a serial ID for their setup (e.g., the Digit), make sure to enter your serial ID in `examples/conf/sensor/<your-sensor>.yaml`.
 

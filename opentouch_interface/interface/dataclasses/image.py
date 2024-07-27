@@ -55,13 +55,24 @@ class ImageWriter:
 
 
 class ImageReader:
-    def __init__(self, file: Union[str, BytesIO]):
-        if isinstance(file, str):
-            self.file_path = file
-            self.file = None
-        else:
+    def __init__(self, file: Union[BytesIO, None] = None, path: Union[str, None] = None):
+        # Check that exactly one of file or path is provided
+        if (file is None and path is None) or (file is not None and path is not None):
+            raise ValueError('Exactly one of file or path must be provided.')
+
+        if file is not None:
+            if not isinstance(file, BytesIO):
+                raise TypeError('File must be of type BytesIO.')
             self.file_path = None
             self.file = file
+        else:
+            if not isinstance(path, str):
+                raise TypeError('Path must be of type str.')
+            self.file_path = path
+            self.file = None
+            if not self.file_path.endswith('.h5'):
+                raise ValueError('Path must end with ".h5".')
+
         self.frames = []
         self.current_index = 0
         self.fps = self._read_fps()

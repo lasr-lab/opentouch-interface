@@ -1,6 +1,9 @@
+import pprint
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
+
+from pydantic import BaseModel
 
 from opentouch_interface.interface.options import SensorSettings, DataStream
 
@@ -18,24 +21,20 @@ class TouchSensor(ABC):
         GELSIGHT_MINI = "Gelsight Mini"
         FILE = "File"
 
-    def __init__(self, sensor_type: SensorType):
+    def __init__(self, config: BaseModel):
         """
         Initializes the touch sensor with a specific type.
 
-        :param sensor_type: The type of the touch sensor (e.g., DIGIT, GELSIGHT_MINI, FILE).
+        :param config: Config for that sensor
         """
-        self.sensor_type = sensor_type
+        self.config = config
         self.sensor = None
-        self.settings = {}
 
     @abstractmethod
-    def initialize(self, name: str, serial: str, path: str) -> None:
+    def initialize(self) -> None:
         """
         Initialize the touch sensor with necessary parameters.
 
-        :param name: Name of the sensor.
-        :param serial: Serial number of the sensor.
-        :param path: Path where data is stored (and can be loaded from) when the sensor data is recorded.
         :return: None.
         """
         pass
@@ -104,15 +103,10 @@ class TouchSensor(ABC):
         """
         pass
 
-    @abstractmethod
-    def info(self, verbose: bool = True) -> dict:
-        """
-        Get information about the touch sensor.
-
-        :param verbose: Whether to print detailed information.
-        :return: A dictionary containing sensor information.
-        """
-        pass
+    def info(self, verbose: bool = True):
+        if verbose:
+            pprint.pprint(self.config.dict())
+        return self.config.dict()
 
     @abstractmethod
     def disconnect(self) -> None:

@@ -1,9 +1,12 @@
-type: "DIGIT"
-name: "First Gripper"   # Options: Choose arbitrary name
-serial_id: "D20804"     # Options: Enter the serial ID of your sensor
-lighting: 15            # Options: 0 to 15
-resolution: "QVGA"      # Options: VGA, QVGA
-fps: 30                 # Options: 30, 60
-stream: "FRAME"         # Options: FRAME
-recording: False        # Options: True, False
-path: "recording.h5"    # Enter path to file you want to read (must have .h5 ending)
+# Mandatory
+sensor_type: "DIGIT"            # Sensor type. Use DIGIT here.
+sensor_name: "First Gripper"    # Name of the sensor (can be arbitrary)
+serial_id: "D20804"             # Serial ID of the Digit sensor
+
+# Optional
+intensity: 15                   # Brightness of the LED lights. Integer in the range of 0 to 15. Default is 15.
+resolution: "QVGA"              # Resolution of the retrieved image. Can be either VGA or QVGA. Default is QVGA.
+fps: 60                         # Frame rate at which the sensor samples data. Can be either 30 or 60. Default is 60.
+stream: "FRAME"                 # Which data stream should be retrieved. Default is FRAME.
+recording: False                # Weather the data is recorded when calling show(). Can be either True or False. Default is False.
+#path: "recording.h5"            # File path where recorded data is written to. Must be a .h5 file. By default, a random name is generated.

@@ -11,6 +11,7 @@ class SensorSettings(Enum):
     INTENSITY_RGB = "intensity_rgb"
     PATH = "path"
     CALIBRATION = "calibration"
+    CURRENT_FRAME_INDEX = "current_frame_index"
 
 
 class DataStream(Enum):
