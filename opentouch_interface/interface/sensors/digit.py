@@ -1,4 +1,4 @@
-import logging
+import threading
 import time
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ValidationError, PrivateAttr, model_validator
 
+from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from opentouch_interface.interface.dataclasses.image import Image, ImageWriter
@@ -40,6 +41,10 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
     '''Flag to indicate if recording is active, defaults to False'''
     _calibration: Image = PrivateAttr(default=None)
     '''Private attribute to store the calibration image, defaults to None'''
+    sampling_frequency: int = Field(30, description="Sampling frequency in Hz")
+    '''The sampling frequency in Hz, defaults to 30Hz'''
+    recording_frequency: int = Field(sampling_frequency, description="Recording frequency in Hz")
+    '''The recording frequency in Hz, defaults to sampling_frequency (which by default is 30Hz)'''
 
     @model_validator(mode='after')
     def validate_model(self):
@@ -66,6 +71,11 @@ class DigitSensor(TouchSensor):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config=self._validate_and_update_config(config))
+        self.central_buffer = CentralBuffer()
+        self.reading_thread = None
+        self.recording_thread = None
+        self.stop_event = threading.Event()
+        self.recording_event = threading.Event()
 
     @staticmethod
     def _validate_and_update_config(config: Dict[str, Any]) -> DigitConfig:
@@ -83,6 +93,12 @@ class DigitSensor(TouchSensor):
         self.set(SensorSettings.FPS, self.config.fps)
         self.set(SensorSettings.INTENSITY, self.config.intensity)
         self.set(SensorSettings.MANUFACTURER, self.sensor.manufacturer)
+
+        # Start the reading thread
+        self.start_reading()
+
+        if self.config.recording:
+            self.start_recording()  # Start recording if configured to do so
 
     def set(self, attr: SensorSettings, value: Any) -> Any:
         if not isinstance(attr, SensorSettings):
@@ -121,53 +137,30 @@ class DigitSensor(TouchSensor):
             raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.\n")
         return getattr(self.config, attr.name.lower(), None)
 
-    def read(self, attr: DataStream, value: Any = None) -> Any:
+    def read(self, attr: DataStream, value: Any = None) -> Image | None:
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
 
         if attr == DataStream.FRAME:
-            if isinstance(value, bool) or value is None:
-                transpose = (value is not None) or value
-                try:
-                    frame = self.sensor.get_frame(transpose)
-                    return Image(image=frame, rotation=(0, 1, 2))
-                except Exception as e:
-                    logging.getLogger(__name__).error(e)
-                    return None
-            else:
-                raise TypeError(f"Expected value must be of type bool but found {type(value)} instead\n")
-
+            return self.central_buffer.get()
         else:
             warnings.warn("The provided attribute did not match any available attribute.\n")
+            return None
 
-    def show(self, attr: DataStream, recording: bool = False) -> Any:
+    def show(self, attr: DataStream) -> Any:
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
 
         if attr == DataStream.FRAME:
-            fps = self.config.fps
-            interval = 1.0 / fps
-
-            with ImageWriter(file_path=self.config.path, fps=fps) as recorder:
-                while True:
-                    start_time = time.time()  # Record the start time
-                    image = self.read(attr=DataStream.FRAME)
-
-                    if recording:
-                        recorder.save(image)
-
-                    cv2.imshow('Image', image.as_cv2())
-
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-
-                    elapsed_time = time.time() - start_time
-                    time_to_sleep = interval - elapsed_time
-                    if time_to_sleep > 0:
-                        time.sleep(time_to_sleep)
+            while not self.stop_event.is_set():
+                image = self.read(attr=DataStream.FRAME)
+                if image is not None:
+                    cv2.imshow('Digit view', image.as_cv2())
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    self.stop_event.set()
+                    break
 
             cv2.destroyAllWindows()
-
         else:
             warnings.warn("The provided attribute did not match any available attribute.\n", stacklevel=2)
             return None
@@ -176,24 +169,79 @@ class DigitSensor(TouchSensor):
         interval = 1.0 / self.config.fps
 
         # Skip the initial frames
-        for _ in range(skip_frames):
-            self.read(attr=DataStream.FRAME)
-            time.sleep(interval)  # Sleep for the time determined by FPS
+        skipped = 0
+        while skipped < skip_frames:
+            image = self.read(attr=DataStream.FRAME)
+            if image is not None:
+                skipped += 1
+            time.sleep(interval)
 
         # Collect frames after skipping
         frames = []
-        for _ in range(num_frames):
+        collected = 0
+        while collected < num_frames:
             image = self.read(attr=DataStream.FRAME)
-            frames.append(image.as_cv2())
-            time.sleep(interval)  # Sleep for the time determined by FPS
+            if image is not None:
+                frames.append(image.as_cv2())
+                collected += 1
+            time.sleep(interval)
 
         # Calculate the average frame
         average_frame = np.mean(frames, axis=0).astype(np.uint8)
         average_image = Image(image=average_frame, rotation=(0, 1, 2))
 
         self.config._calibration = average_image
-
         return average_image
 
     def disconnect(self):
+        self.stop_event.set()
+        if self.reading_thread:
+            self.reading_thread.join()
+        if self.recording_thread:
+            self.recording_thread.join()
         self.sensor.disconnect()
+
+    def start_reading(self):
+        """Start reading data from the sensor at the configured sampling frequency."""
+        def read_sensor():
+            interval = 1.0 / self.config.sampling_frequency
+            while not self.stop_event.is_set():
+                start_time = time.time()
+                frame = self.sensor.get_frame()
+                if frame is not None:
+                    self.central_buffer.put(Image(image=frame, rotation=(0, 1, 2)))
+                elapsed_time = time.time() - start_time
+                time_to_sleep = interval - elapsed_time
+                if time_to_sleep > 0:
+                    time.sleep(time_to_sleep)
+
+        self.reading_thread = threading.Thread(target=read_sensor)
+        self.reading_thread.start()
+
+    def start_recording(self):
+        """Start recording data from the central buffer at the configured sampling frequency."""
+        if self.recording_thread and self.recording_thread.is_alive():
+            return
+
+        def record_data():
+            interval = 1.0 / self.config.recording_frequency
+            with ImageWriter(file_path=self.config.path, fps=self.config.recording_frequency) as recorder:
+                while not self.stop_event.is_set():
+                    start_time = time.time()
+                    image = self.read(attr=DataStream.FRAME)
+                    if image:
+                        recorder.save(image)
+                    elapsed_time = time.time() - start_time
+                    time_to_sleep = interval - elapsed_time
+                    if time_to_sleep > 0:
+                        time.sleep(time_to_sleep)
+
+        self.recording_thread = threading.Thread(target=record_data)
+        self.recording_thread.start()
+
+    def stop_recording(self):
+        """Stop the ongoing recording."""
+        if self.recording_thread and self.recording_thread.is_alive():
+            self.stop_event.set()
+            self.recording_thread.join()
+            self.recording_thread = None

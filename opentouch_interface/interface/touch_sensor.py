@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from opentouch_interface.interface.dataclasses.image import Image
 from opentouch_interface.interface.options import SensorSettings, DataStream
 
 
@@ -93,20 +94,28 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def show(self, attr: DataStream, recording: bool = False) -> None:
+    def show(self, attr: DataStream) -> None:
         """
         Show the data stream from the touch sensor.
 
         :param attr: The data stream to show (defined in Streams).
-        :param recording: Whether to record the data while showing it.
         :return: None.
         """
         pass
 
     def info(self, verbose: bool = True):
+        def format_value(value):
+            if isinstance(value, list) and all(isinstance(item, Image) for item in value):
+                # Truncate or summarize the list of Image objects
+                return f"{len(value)} images"
+            return value
+
         if verbose:
-            pprint.pprint(self.config.dict())
-        return self.config.dict()
+            formatted_dict = {k: format_value(v) for k, v in self.config.dict().items()}
+            pprint.pprint(formatted_dict)
+
+        # Return the potentially formatted dictionary
+        return {k: format_value(v) for k, v in self.config.dict().items()}
 
     @abstractmethod
     def disconnect(self) -> None:

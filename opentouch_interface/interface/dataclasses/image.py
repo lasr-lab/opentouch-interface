@@ -23,8 +23,8 @@ class ImageWriter:
     def __init__(self, file_path: str, fps: int):
         self.file_path = file_path
         self.frames_buffer = []
-        self.total_frames = 0
         self.fps = fps
+        self.total_frames = self._get_total_frames()
 
     def __enter__(self):
         return self
@@ -34,6 +34,15 @@ class ImageWriter:
 
     def save(self, image: Image):
         self.frames_buffer.append(image)
+
+    def _get_total_frames(self) -> int:
+        try:
+            with h5py.File(self.file_path, 'r') as hf:
+                if 'frames' in hf:
+                    return len(hf['frames'].keys())
+                return 0
+        except FileNotFoundError:
+            return 0
 
     def _save_buffer_to_file(self):
         if not self.frames_buffer:
@@ -114,17 +123,6 @@ class ImageReader:
             return next_image
         else:
             return self._get_black_image()
-
-    def get_next_frame_timed(self) -> Optional[Image]:
-        current_time = time.time()
-        time_elapsed = current_time - self.last_frame_time
-        frame_interval = 1 / self.fps
-
-        if time_elapsed >= frame_interval:
-            self.last_frame = self.get_next_frame()
-            self.last_frame_time = current_time
-
-        return self.last_frame
 
     def restart(self) -> None:
         """Jump back to the beginning of the frames."""

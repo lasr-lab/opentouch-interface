@@ -11,7 +11,7 @@ We also provide an easy-to-use web interface that lets you connect to the sensor
 
 We currently offer a simple and unified API and web interface for the following touch sensors: 
 - [Digit](https://digit.ml/)
-- [GelSight Mini](https://www.gelsight.com/gelsightmini/)
+- [GelSight Mini](https://www.gelsight.com/gelsightmini/) (not working right now)
 
 ## Installation
 

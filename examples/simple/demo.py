@@ -30,7 +30,7 @@ def run(cfg: DictConfig):
     sensor.info()
 
     # Display a video stream of the sensor data
-    sensor.show(attr=sensor.config.stream, recording=sensor.config.recording)
+    sensor.show(attr=sensor.config.stream)
 
     # Close the connection to the sensor
     sensor.disconnect()

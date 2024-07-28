@@ -1,10 +1,13 @@
 import base64
-import warnings
+import threading
+import time
 from typing import Any, Union, Dict, List
 from io import BytesIO
-from pydantic import BaseModel, Field, ValidationError, model_validator
 import cv2
+import warnings
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
+from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from opentouch_interface.interface.dataclasses.image import Image, ImageReader
@@ -25,7 +28,7 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
     """List to store frames, defaults to an empty list"""
     current_frame_index: int = Field(default=0)
     """Index of the current frame, defaults to 0"""
-    recording: bool = Field(default=False, literal=True, description="Whether the sensor is recording (must be false")
+    recording: bool = Field(default=False, literal=True, description="Whether the sensor is recording (must be false)")
     """Whether the sensor is recording (must be false, as FileSensor can only replay data)"""
     stream: Union[str, DataStream] = Field(DataStream.FRAME, description="Stream type (FRAME)")
     '''The stream type, must be "FRAME", defaults to "FRAME"'''
@@ -55,6 +58,9 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
 class FileSensor(TouchSensor):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config=self._validate_and_update_config(config))
+        self.central_buffer = CentralBuffer()
+        self.reading_thread = None
+        self.stop_event = threading.Event()
 
     @staticmethod
     def _validate_and_update_config(config: Dict[str, Any]) -> FileConfig:
@@ -68,7 +74,8 @@ class FileSensor(TouchSensor):
         self.config.frames = self.sensor.get_all_frames()
 
     def connect(self):
-        pass
+        # Start the reading thread
+        self.start_reading()
 
     def set(self, attr: SensorSettings, value: Any) -> Any:
         if attr == SensorSettings.CURRENT_FRAME_INDEX:
@@ -85,9 +92,7 @@ class FileSensor(TouchSensor):
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
         if attr == DataStream.FRAME:
-            if self.sensor:
-                return self.sensor.get_next_frame_timed()
-
+            return self.central_buffer.get()
         else:
             warnings.warn("The provided attribute did not match any available attribute.\n")
             return None
@@ -95,11 +100,12 @@ class FileSensor(TouchSensor):
     def show(self, attr: DataStream, recording: bool = False) -> Any:
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
+
         if attr == DataStream.FRAME:
             while True:
                 frame = self.read(DataStream.FRAME)
                 if frame is not None:
-                    cv2.imshow('Frame', frame.as_cv2())
+                    cv2.imshow('File view', frame.as_cv2())
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
                 else:
@@ -114,4 +120,23 @@ class FileSensor(TouchSensor):
         pass
 
     def disconnect(self):
-        pass
+        self.stop_event.set()
+        if self.reading_thread:
+            self.reading_thread.join()
+
+    def start_reading(self):
+        """Start reading data from the file in a separate thread at the fps specified by the ImageReader."""
+        def read_file():
+            interval = 1.0 / self.sensor.fps
+            while not self.stop_event.is_set():
+                start_time = time.time()
+                frame = self.sensor.get_next_frame()
+                if frame:
+                    self.central_buffer.put(frame)
+                elapsed_time = time.time() - start_time
+                time_to_sleep = interval - elapsed_time
+                if time_to_sleep > 0:
+                    time.sleep(time_to_sleep)
+
+        self.reading_thread = threading.Thread(target=read_file)
+        self.reading_thread.start()
