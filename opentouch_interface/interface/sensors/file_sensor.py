@@ -1,3 +1,4 @@
+import base64
 import warnings
 from typing import Any, Union, Dict, List
 from io import BytesIO
@@ -18,7 +19,7 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
     """The type of the sensor, defaults to 'FILE'"""
     path: Union[str, None] = None
     """The file path for reading data, defaults to None"""
-    file: Union[BytesIO, None] = None
+    file: Union[str, BytesIO, None] = None
     """The file-like object for reading data, defaults to None"""
     frames: List[Any] = Field(default_factory=list)
     """List to store frames, defaults to an empty list"""
@@ -45,6 +46,10 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
             raise ValueError('Either path or file must be provided.')
         if path and not path.endswith('.h5'):
             raise ValueError('Path must be a .h5 file.')
+
+        # Convert file from base64 to BytesIO
+        if file and isinstance(file, str):
+            self.file = BytesIO(base64.b64decode(file))
 
 
 class FileSensor(TouchSensor):

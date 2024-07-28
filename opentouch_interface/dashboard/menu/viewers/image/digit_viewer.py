@@ -11,7 +11,7 @@ class DigitViewer(BaseImageViewer):
         """
         Render options specific to the Digit sensor.
         """
-        sensor_name = self.sensor.settings[SensorSettings.SENSOR_NAME]
+        sensor_name = self.sensor.config.sensor_name
 
         # Render heading with sensor name
         self.title.markdown(f"### Settings for sensor '{sensor_name}'")

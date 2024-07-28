@@ -10,7 +10,8 @@ class OpentouchInterface:
         if not isinstance(config, DictConfig):
             raise TypeError('config must be an instance of DictConfig')
 
-        config = config['sensor']
+        if 'sensor' in config:
+            config = config['sensor']
 
         if 'sensor_type' not in config:
             raise ValueError(f'Attribute sensor_type must be specified. Available values are '

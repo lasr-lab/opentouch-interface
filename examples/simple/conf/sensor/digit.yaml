@@ -9,4 +9,4 @@ resolution: "QVGA"              # Resolution of the retrieved image. Can be eith
 fps: 60                         # Frame rate at which the sensor samples data. Can be either 30 or 60. Default is 60.
 stream: "FRAME"                 # Which data stream should be retrieved. Default is FRAME.
 recording: False                # Weather the data is recorded when calling show(). Can be either True or False. Default is False.
-#path: "recording.h5"            # File path where recorded data is written to. Must be a .h5 file. By default, a random name is generated.
+path: "recording.h5"            # File path where recorded data is written to. Must be a .h5 file. By default, a random name is generated.

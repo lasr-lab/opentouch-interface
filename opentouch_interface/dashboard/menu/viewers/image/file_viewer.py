@@ -1,5 +1,4 @@
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
-from opentouch_interface.interface.options import SensorSettings
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
@@ -11,7 +10,7 @@ class FileViewer(BaseImageViewer):
         """
         Render options specific to the Digit sensor.
         """
-        sensor_name = self.sensor.settings[SensorSettings.SENSOR_NAME]
+        sensor_name = self.sensor.config.sensor_name
 
         # Render heading with sensor name
         self.right.markdown(f"## Settings for {sensor_name}")

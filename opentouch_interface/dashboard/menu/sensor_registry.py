@@ -1,18 +1,18 @@
-import os.path
-from io import StringIO, BytesIO
+import base64
+from io import StringIO
 from typing import Optional
-from datetime import datetime
 
 import streamlit as st
 import yaml
+from omegaconf import DictConfig, OmegaConf
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from opentouch_interface.dashboard.menu.viewers.factory import ViewerFactory
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.interface.options import SensorSettings
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
+# Only used when entering the sensor config via input fields
 class SensorAttribute:
     def __init__(self, value: Optional[str | UploadedFile], required: bool):
         self.value = value
@@ -21,11 +21,13 @@ class SensorAttribute:
 
 class SensorForm:
     def __init__(self,
+                 sensor_type: Optional[SensorAttribute] = None,
                  name: Optional[SensorAttribute] = None,
                  serial: Optional[SensorAttribute] = None,
                  path: Optional[SensorAttribute] = None,
                  file: Optional[SensorAttribute] = None):
 
+        self.sensor_type = sensor_type or SensorAttribute(None, True)
         self.name = name or SensorAttribute(None, False)
         self.serial = serial or SensorAttribute(None, False)
         self.path = path or SensorAttribute(None, False)
@@ -37,6 +39,19 @@ class SensorForm:
             if field.required and field.value is None:
                 return False
         return True
+
+    def to_omc_config(self) -> DictConfig:
+        file_content = None
+        if self.file is not None and self.file.value:
+            file_content = base64.b64encode(self.file.value.getvalue()).decode('utf-8')
+
+        return OmegaConf.create({
+            "sensor_type": self.sensor_type.value,
+            "sensor_name": self.name.value if self.name is not None else None,
+            "serial_id": self.serial.value if self.serial is not None else None,
+            "path": self.path.value if self.path is not None else None,
+            "file": file_content,
+        })
 
 
 class SensorRegistry:
@@ -71,14 +86,10 @@ class SensorRegistry:
                     label_visibility="collapsed"
                 )
                 if config is not None:
-                    stringio = StringIO(config.getvalue().decode("utf-8"))
-                    config = yaml.safe_load(stringio)
-                    form = SensorForm(
-                        name=SensorAttribute(config['name'], False),
-                        serial=SensorAttribute(config['serial_id'], False),
-                        path=SensorAttribute(config['path'], False)
-                    )
-                    self.add_sensor(sensor_type=TouchSensor.SensorType[config['type']], form=form)
+                    dict_config = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
+                    omc_config = OmegaConf.create(dict_config)
+                    self.add_sensor(sensor_type=TouchSensor.SensorType[omc_config['sensor_type']], config=omc_config)
+                    # Maybe remove sensor_type as it can be retrieved from the config
 
             if sensor_type is not None:
                 selected_sensor = self.mapping[sensor_type]
@@ -90,7 +101,7 @@ class SensorRegistry:
                     type="primary",
                     disabled=not form.is_filled(),
                     on_click=self.add_sensor,
-                    args=(selected_sensor, form)
+                    args=(selected_sensor, form.to_omc_config())
                 )
 
             if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
@@ -122,6 +133,7 @@ class SensorRegistry:
                     label_visibility="collapsed"
                 )
             return SensorForm(
+                sensor_type=SensorAttribute(sensor_type.name, True),
                 name=SensorAttribute(sensor_name, True),
                 serial=SensorAttribute(serial_id, True),
                 path=SensorAttribute(sensor_path, False)
@@ -142,6 +154,7 @@ class SensorRegistry:
                     label_visibility="collapsed"
                 )
                 return SensorForm(
+                    sensor_type=SensorAttribute(sensor_type.name, True),
                     name=SensorAttribute(sensor_name, True),
                     path=SensorAttribute(sensor_path, False)
                 )
@@ -163,65 +176,33 @@ class SensorRegistry:
                 )
 
                 return SensorForm(
+                    sensor_type=SensorAttribute(sensor_type.name, True),
                     name=SensorAttribute(sensor_name, True),
                     file=SensorAttribute(file, True)
                 )
 
-    def add_sensor(self, sensor_type: TouchSensor.SensorType, form: SensorForm):
+    def add_sensor(self, sensor_type: TouchSensor.SensorType, config: DictConfig):
         # If not already existent, create a list for viewers in session state
         if 'viewers' not in st.session_state:
             st.session_state.viewers = []
 
         # Check if a sensor with that name already exists
-        if any(e.sensor.settings[SensorSettings.SENSOR_NAME] == form.name.value for e in st.session_state.viewers):
-            st.error(body=f"Sensor named '{form.name.value}' already exists!", icon="⚠️")
+        if any(e.sensor.config.sensor_name == config.sensor_name for e in st.session_state.viewers):
+            st.error(body=f"Sensor named '{config.sensor_name}' already exists!", icon="⚠️")
             return
 
         # For each sensor type, check if its arguments are valid
-        sensor = OpentouchInterface(sensor_type=sensor_type)
-        serial, name, path = form.serial.value, form.name.value, form.path.value
-        file: UploadedFile = form.file.value
-
-        if sensor_type == TouchSensor.SensorType.DIGIT:
-
-            # If path is None, choose current date as file name
-            if path is None:
-                now = datetime.now()
-                path = now.strftime("%Y-%m-%d-%H:%M:%S.h5")
-
-            if not path.endswith('.h5'):
-                st.error(body=f"File {path} does not end with .h5!", icon="⚠️")
-                return
-            if os.path.exists(path):
-                st.error(body=f"File {path} already exists!", icon="⚠️")
-                return
-            sensor.initialize(name=name, serial=serial, path=path)
-
-        elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-
-            # If path is None, choose current date as file name
-            if path is None:
-                now = datetime.now()
-                path = now.strftime("%Y-%m-%d-%H:%M:%S.h5")
-
-            if not path.endswith('.h5'):
-                st.error(body=f"File {path} does not end with .h5!", icon="⚠️")
-                return
-            if os.path.exists(path):
-                st.error(body=f"File {path} already exists!", icon="⚠️")
-                return
-            sensor.initialize(name=name, serial=serial, path=path)
-
-        elif sensor_type == TouchSensor.SensorType.FILE:
-            file_or_path = BytesIO(file.getvalue()) if file is not None else path
-            sensor.initialize(name=name, serial=serial, path=file_or_path)
-
+        # try:
+        sensor = OpentouchInterface(config=config)
+        sensor.initialize()
         sensor.connect()
 
         # Create viewer and add it to the session state
         viewer = ViewerFactory(sensor, sensor_type)
         st.session_state.viewers.append(viewer)
         st.success(
-            body=f"Sensor {form.name.value} ({self.from_type[sensor_type]}) has been successfully added!",
+            body=f"Sensor {config.sensor_name} ({self.from_type[sensor_type]}) has been successfully added!",
             icon="💡"
         )
+        # except Exception as e:
+        #     st.error(body=e, icon="⚠️")
