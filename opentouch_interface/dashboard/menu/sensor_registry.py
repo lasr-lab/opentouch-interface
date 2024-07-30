@@ -88,6 +88,10 @@ class SensorRegistry:
                 if config is not None:
                     dict_config = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
                     omc_config = OmegaConf.create(dict_config)
+
+                    # If using the dashboard, recording must be activated manually
+                    omc_config['recording'] = False
+
                     self.add_sensor(sensor_type=TouchSensor.SensorType[omc_config['sensor_type']], config=omc_config)
                     # Maybe remove sensor_type as it can be retrieved from the config
 
@@ -196,6 +200,7 @@ class SensorRegistry:
             sensor = OpentouchInterface(config=config)
             sensor.initialize()
             sensor.connect()
+            sensor.calibrate()
 
             # Create a viewer and add it to the session state
             viewer = ViewerFactory(sensor, sensor_type)

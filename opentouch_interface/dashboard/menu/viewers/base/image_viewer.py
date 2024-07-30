@@ -18,6 +18,7 @@ class BaseImageViewer(ABC):
         self.right = None
         self.container = None
         self.title = None
+        self.group = "all"
 
     @abstractmethod
     def render_options(self):

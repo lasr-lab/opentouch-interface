@@ -126,3 +126,17 @@ class TouchSensor(ABC):
         operations to properly disconnect the sensor from its data source.
         """
         pass
+
+    @abstractmethod
+    def start_recording(self) -> None:
+        """
+        Start the recording of the touch sensor.
+        """
+        pass
+
+    @abstractmethod
+    def stop_recording(self) -> None:
+        """
+        Stop the recording of the touch sensor.
+        """
+        pass

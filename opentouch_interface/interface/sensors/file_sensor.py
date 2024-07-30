@@ -139,3 +139,9 @@ class FileSensor(TouchSensor):
 
         self.reading_thread = threading.Thread(target=read_file)
         self.reading_thread.start()
+
+    def start_recording(self) -> None:
+        pass
+
+    def stop_recording(self) -> None:
+        pass

@@ -2,8 +2,8 @@ from opentouch_interface.dashboard.menu.sensor_viewer import SensorViewer
 
 import streamlit as st
 
-st.title('Opentouch Viewer')
-st.divider()
+sensor_viewer = SensorViewer()
+sensor_viewer.select_group()
 
 if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
     st.info(
@@ -11,6 +11,5 @@ if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
         icon="💡"
     )
 
-sensor_viewer = SensorViewer()
 sensor_viewer.render_settings()
 sensor_viewer.render_data()
