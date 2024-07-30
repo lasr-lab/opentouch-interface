@@ -38,7 +38,7 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
         # Validate stream
         if not isinstance(self.stream, DataStream):
             if not isinstance(self.stream, str) or self.stream != "FRAME":
-                raise ValueError('Stream must be a str set to "FRAME"')
+                raise ValueError(f"Invalid stream '{self.stream}': Stream must be a str set to 'FRAME'")
             self.stream: DataStream = DataStream.FRAME
 
         # Validate path and file
@@ -48,7 +48,7 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
         if path is None and file is None:
             raise ValueError('Either path or file must be provided.')
         if path and not path.endswith('.h5'):
-            raise ValueError('Path must be a .h5 file.')
+            raise ValueError(f"Invalid path '{path}': Path must be a .h5 file.")
 
         # Convert file from base64 to BytesIO
         if file and isinstance(file, str):
@@ -81,25 +81,25 @@ class FileSensor(TouchSensor):
         if attr == SensorSettings.CURRENT_FRAME_INDEX:
             self.config.current_frame_index = value
         else:
-            raise TypeError(f"Only 'current_frame_index' can be set, but '{attr}' was provided.\n")
+            raise TypeError(f"Only 'current_frame_index' can be set, but '{attr}' was provided.")
 
     def get(self, attr: SensorSettings) -> Any:
         if not isinstance(attr, SensorSettings):
-            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.")
         return getattr(self.config, attr.name.lower(), None)
 
     def read(self, attr: DataStream, value: Any = None) -> Image | None:
         if not isinstance(attr, DataStream):
-            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.")
         if attr == DataStream.FRAME:
             return self.central_buffer.get()
         else:
-            warnings.warn("The provided attribute did not match any available attribute.\n")
+            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute. Returning None.")
             return None
 
-    def show(self, attr: DataStream, recording: bool = False) -> Any:
+    def show(self, attr: DataStream, recording: bool = False):
         if not isinstance(attr, DataStream):
-            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.")
 
         if attr == DataStream.FRAME:
             while True:
@@ -112,8 +112,7 @@ class FileSensor(TouchSensor):
                     break
             cv2.destroyAllWindows()
         else:
-            warnings.warn("The provided attribute did not match any available attribute.\n", stacklevel=2)
-            return None
+            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute.", stacklevel=2)
 
     def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> None:
         # Calibration is not applicable for FileSensor as it reads static files.

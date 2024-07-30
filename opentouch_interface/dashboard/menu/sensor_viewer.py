@@ -1,4 +1,3 @@
-import time
 from typing import List
 
 import streamlit as st
@@ -30,4 +29,3 @@ class SensorViewer:
         while True:
             for viewer in self.viewers:
                 viewer.render_frame()
-            time.sleep(1/30)

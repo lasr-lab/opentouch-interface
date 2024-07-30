@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 from datetime import datetime
 import os
 import warnings
@@ -52,19 +52,25 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
         if self.path is None:
             self.path = f"{self.sensor_type}-{self.sensor_name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
         if not self.path.endswith('.h5'):
-            raise ValueError('Path must have a .h5 extension')
+            raise ValueError(f"Invalid path '{self.path}': Path must have a .h5 extension")
         if os.path.exists(self.path):
-            raise ValueError('File already exists')
+            raise ValueError(f"File '{self.path}' already exists")
 
         # Validate fps
         if self.fps not in [30, 60]:
-            raise ValueError('FPS must be either 30 or 60')
+            raise ValueError(f"Invalid fps '{self.fps}': FPS must be either 30 or 60")
 
         # Validate stream
         if not isinstance(self.stream, DataStream):
             if not isinstance(self.stream, str) or self.stream != "FRAME":
-                raise ValueError('Stream must be a str set to "FRAME"')
+                raise ValueError(f"Invalid stream '{self.stream}': Stream must be a str set to 'FRAME'")
             self.stream: DataStream = DataStream.FRAME
+
+        # Validate fps and streams in conjunction
+        if (self.fps == 30 and self.resolution != "VGA") or (self.fps == 60 and self.resolution != "QVGA"):
+            raise ValueError(
+                f"Invalid fps and resolution combination: FPS of {self.fps} requires resolution "
+                f"'{'VGA' if self.fps == 30 else 'QVGA'}' but found '{self.resolution}' instead")
 
 
 class DigitSensor(TouchSensor):
@@ -102,7 +108,7 @@ class DigitSensor(TouchSensor):
 
     def set(self, attr: SensorSettings, value: Any) -> Any:
         if not isinstance(attr, SensorSettings):
-            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead")
 
         if attr == SensorSettings.RESOLUTION:
             self.config.resolution = value
@@ -120,36 +126,37 @@ class DigitSensor(TouchSensor):
             self.config.manufacturer = value
 
         elif attr == SensorSettings.INTENSITY_RGB:
-            if isinstance(value, List) and len(value) == 3:
+            if isinstance(value, list) and len(value) == 3:
                 self.config.intensity = self.sensor.set_intensity_rgb(*value)
             else:
-                raise TypeError(f"Expected value must be of type list with length of 3 but found "
-                                f"{type(value)} with length {len(value) if isinstance(value, List) else 'N/A'} "
-                                f"instead\n")
+                raise TypeError(
+                    f"Expected value to be a list with length of 3 but found {type(value)} with length "
+                    f"{len(value) if isinstance(value, list) else 'N/A'} instead")
 
         else:
             warnings.warn("The Digit sensor only supports the following options to be set: RESOLUTION, FPS, "
                           "INTENSITY, MANUFACTURER and INTENSITY_RGB. The provided attribute did not match any of "
-                          "these options and was skipped.\n", stacklevel=2)
+                          "these options and was skipped.", stacklevel=2)
 
     def get(self, attr: SensorSettings) -> Any:
         if not isinstance(attr, SensorSettings):
-            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead")
         return getattr(self.config, attr.name.lower(), None)
 
     def read(self, attr: DataStream, value: Any = None) -> Image | None:
         if not isinstance(attr, DataStream):
-            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead")
 
         if attr == DataStream.FRAME:
             return self.central_buffer.get()
         else:
-            warnings.warn("The provided attribute did not match any available attribute.\n")
+            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute. "
+                          f"Returning None.", stacklevel=2)
             return None
 
-    def show(self, attr: DataStream) -> Any:
+    def show(self, attr: DataStream):
         if not isinstance(attr, DataStream):
-            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
+            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead")
 
         if attr == DataStream.FRAME:
             while not self.stop_event.is_set():
@@ -162,8 +169,8 @@ class DigitSensor(TouchSensor):
 
             cv2.destroyAllWindows()
         else:
-            warnings.warn("The provided attribute did not match any available attribute.\n", stacklevel=2)
-            return None
+            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute.",
+                          stacklevel=2)
 
     def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Image | None:
         interval = 1.0 / self.config.fps
@@ -203,13 +210,17 @@ class DigitSensor(TouchSensor):
 
     def start_reading(self):
         """Start reading data from the sensor at the configured sampling frequency."""
+
         def read_sensor():
             interval = 1.0 / self.config.sampling_frequency
             while not self.stop_event.is_set():
                 start_time = time.time()
-                frame = self.sensor.get_frame()
-                if frame is not None:
-                    self.central_buffer.put(Image(image=frame, rotation=(0, 1, 2)))
+                try:
+                    frame = self.sensor.get_frame()
+                    if frame is not None:
+                        self.central_buffer.put(Image(image=frame, rotation=(0, 1, 2)))
+                except Exception as e:
+                    print(e)
                 elapsed_time = time.time() - start_time
                 time_to_sleep = interval - elapsed_time
                 if time_to_sleep > 0:

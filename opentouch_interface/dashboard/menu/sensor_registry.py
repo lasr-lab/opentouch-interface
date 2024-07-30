@@ -192,17 +192,17 @@ class SensorRegistry:
             return
 
         # For each sensor type, check if its arguments are valid
-        # try:
-        sensor = OpentouchInterface(config=config)
-        sensor.initialize()
-        sensor.connect()
+        try:
+            sensor = OpentouchInterface(config=config)
+            sensor.initialize()
+            sensor.connect()
 
-        # Create viewer and add it to the session state
-        viewer = ViewerFactory(sensor, sensor_type)
-        st.session_state.viewers.append(viewer)
-        st.success(
-            body=f"Sensor {config.sensor_name} ({self.from_type[sensor_type]}) has been successfully added!",
-            icon="💡"
-        )
-        # except Exception as e:
-        #     st.error(body=e, icon="⚠️")
+            # Create a viewer and add it to the session state
+            viewer = ViewerFactory(sensor, sensor_type)
+            st.session_state.viewers.append(viewer)
+            st.success(
+                body=f"Sensor {config.sensor_name} ({self.from_type[sensor_type]}) has been successfully added!",
+                icon="💡"
+            )
+        except Exception as e:
+            st.error(body=e, icon="⚠️")
