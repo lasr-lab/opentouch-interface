@@ -236,7 +236,8 @@ class DigitSensor(TouchSensor):
 
         def record_data():
             interval = 1.0 / self.config.recording_frequency
-            with ImageWriter(file_path=self.config.path, fps=self.config.recording_frequency) as recorder:
+            with ImageWriter(file_path=self.config.path, fps=self.config.recording_frequency,
+                             sensor_name=self.config.sensor_name) as recorder:
                 while not self.stop_event.is_set():
                     start_time = time.time()
                     image = self.read(attr=DataStream.FRAME)

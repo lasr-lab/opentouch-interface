@@ -1,10 +1,10 @@
-import time
 from io import BytesIO
+import threading
 
 import numpy as np
 import h5py
 import torch
-from typing import Tuple, List, Optional, Union
+from typing import Tuple, List, Optional, Union, Dict
 
 
 class Image:
@@ -20,11 +20,14 @@ class Image:
 
 
 class ImageWriter:
-    def __init__(self, file_path: str, fps: int):
+    _file_lock = threading.Lock()  # Class-level lock
+
+    def __init__(self, file_path: str, fps: int, sensor_name: str):
         self.file_path = file_path
         self.frames_buffer = []
         self.fps = fps
-        self.total_frames = self._get_total_frames()
+        self.total_frames = self._get_total_frames(sensor_name)
+        self.sensor_name = sensor_name
 
     def __enter__(self):
         return self
@@ -35,11 +38,11 @@ class ImageWriter:
     def save(self, image: Image):
         self.frames_buffer.append(image)
 
-    def _get_total_frames(self) -> int:
+    def _get_total_frames(self, sensor_name: str) -> int:
         try:
             with h5py.File(self.file_path, 'r') as hf:
-                if 'frames' in hf:
-                    return len(hf['frames'].keys())
+                if sensor_name in hf:
+                    return len(hf[sensor_name].keys())
                 return 0
         except FileNotFoundError:
             return 0
@@ -48,19 +51,20 @@ class ImageWriter:
         if not self.frames_buffer:
             return
 
-        with h5py.File(self.file_path, 'a') as hf:
-            if 'frames' not in hf:
-                group = hf.create_group('frames')
-                hf.attrs['fps'] = self.fps  # Save FPS as an attribute of the file
-            else:
-                group = hf['frames']
+        with ImageWriter._file_lock:  # Ensure exclusive access
+            with h5py.File(self.file_path, 'a') as hf:
+                if self.sensor_name not in hf:
+                    group = hf.create_group(self.sensor_name)
+                    hf.attrs['fps'] = self.fps  # Save FPS as an attribute of the file
+                else:
+                    group = hf[self.sensor_name]
 
-            for image in self.frames_buffer:
-                dataset_name = f'image_{self.total_frames:06d}_cv2'
-                group.create_dataset(dataset_name, data=image.as_cv2())
-                self.total_frames += 1
+                for image in self.frames_buffer:
+                    dataset_name = f'image_{self.total_frames:06d}_cv2'
+                    group.create_dataset(dataset_name, data=image.as_cv2())
+                    self.total_frames += 1
 
-        self.frames_buffer = []
+            self.frames_buffer = []
 
 
 class ImageReader:
@@ -82,12 +86,9 @@ class ImageReader:
             if not self.file_path.endswith('.h5'):
                 raise ValueError('Path must end with ".h5".')
 
-        self.frames = []
-        self.current_index = 0
+        self.frames: Dict[str, List[Image]] = self._load_frames()
+        self.current_index = {sensor_name: 0 for sensor_name in self.frames}
         self.fps = self._read_fps()
-        self._load_frames()
-        self.last_frame_time = 0  # Timestamp of the last frame read
-        self.last_frame = None  # Last frame that was read
 
     def _read_fps(self) -> int:
         with self._open_file() as hf:
@@ -99,56 +100,55 @@ class ImageReader:
         else:
             return h5py.File(self.file, 'r')
 
-    def _load_frames(self) -> List[Image]:
-        images = []
+    def _load_frames(self) -> Dict[str, List[Image]]:
+        sensor_images = {}
         with self._open_file() as hf:
-            if 'frames' in hf:
-                group = hf['frames']
-                for key in group.keys():
-                    if key.startswith('image_') and key.endswith('_cv2'):
-                        img_data = group[key][()]
-                        images.append(Image(img_data, (0, 1, 2)))
+            for sensor_name in hf.keys():
+                if isinstance(hf[sensor_name], h5py.Group):
+                    images = []
+                    group = hf[sensor_name]
+                    for key in group.keys():
+                        if key.startswith('image_') and key.endswith('_cv2'):
+                            img_data = group[key][()]
+                            images.append(Image(img_data, (0, 1, 2)))
+                    if images:  # Only add to a dictionary if images were found
+                        sensor_images[sensor_name] = images
 
-        self.frames = images
         self.current_index = 0  # Reset index after reading all images
-        return images
+        return sensor_images
 
-    def get_all_frames(self) -> List[Image]:
-        return self.frames
+    def get_all_frames(self, sensor_name: str) -> List[Image]:
+        return self.frames[sensor_name]
 
-    def get_next_frame(self) -> Optional[Image]:
-        if self.current_index < len(self.frames):
-            next_image = self.frames[self.current_index]
-            self.current_index += 1
+    def get_next_frame(self, sensor_name: str) -> Optional[Image]:
+        if self.current_index[sensor_name] < len(self.frames[sensor_name]):
+            next_image = self.frames[sensor_name][self.current_index[sensor_name]]
+            self.current_index[sensor_name] += 1
             return next_image
         else:
             return self._get_black_image()
 
-    def restart(self) -> None:
+    def restart(self, sensor_name: str) -> None:
         """Jump back to the beginning of the frames."""
-        self.current_index = 0
-        self.last_frame_time = 0
-        self.last_frame = None
+        self.current_index[sensor_name] = 0
 
-    def jump_to(self, percentage: float) -> None:
+    def jump_to(self, sensor_name: str, percentage: float) -> None:
         """Jump to a position specified by the percentage of the total frames."""
         if not (0.0 <= percentage <= 1.0):
             raise ValueError("Percentage must be between 0.0 and 1.0")
 
-        self.current_index = int(percentage * len(self.frames))
-        self.last_frame_time = 0
-        self.last_frame = None
+        self.current_index[sensor_name] = int(percentage * len(self.frames))
 
-    def get_progress(self) -> float:
+    def get_progress(self, sensor_name: str) -> float:
         """Retrieve the current position as a percentage between 0 and 1."""
         if len(self.frames) == 0:
             return 0.0
-        return self.current_index / len(self.frames)
+        return self.current_index[sensor_name] / len(self.frames[sensor_name])
 
     def _get_black_image(self) -> Image:
         # Create a black image of the same dimensions as the last read image
         if self.frames:
-            last_image = self.frames[-1]
+            last_image = self.frames[next(iter(self.frames))][-1]
             black_image = np.zeros_like(last_image.as_cv2())
             return Image(black_image, (0, 1, 2))
         else:
@@ -156,3 +156,8 @@ class ImageReader:
             default_size = (640, 480, 3)  # Example default size
             black_image = np.zeros(default_size, dtype=np.uint8)
             return Image(black_image, (0, 1, 2))
+
+    def get_sensor_names(self) -> List[str]:
+        with self._open_file() as hf:
+            # List top-level groups, which represent sensors
+            return list(hf.keys())

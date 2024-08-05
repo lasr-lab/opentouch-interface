@@ -195,7 +195,6 @@ class SensorRegistry:
             st.error(body=f"Sensor named '{config.sensor_name}' already exists!", icon="⚠️")
             return
 
-        # For each sensor type, check if its arguments are valid
         try:
             sensor = OpentouchInterface(config=config)
             sensor.initialize()

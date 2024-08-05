@@ -58,9 +58,9 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
 class FileSensor(TouchSensor):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config=self._validate_and_update_config(config))
-        self.central_buffer = CentralBuffer()
-        self.reading_thread = None
-        self.stop_event = threading.Event()
+        self.central_buffers = {}
+        self.reading_threads = {}
+        self.stop_events = {}
 
     @staticmethod
     def _validate_and_update_config(config: Dict[str, Any]) -> FileConfig:
@@ -71,15 +71,20 @@ class FileSensor(TouchSensor):
 
     def initialize(self) -> None:
         self.sensor = ImageReader(file=self.config.file, path=self.config.path)
-        self.config.frames = self.sensor.get_all_frames()
+        for sensor_name in self.sensor.get_sensor_names():
+            self.central_buffers[sensor_name] = CentralBuffer()
+            self.stop_events[sensor_name] = threading.Event()
 
     def connect(self):
-        # Start the reading thread
-        self.start_reading()
+        # Start a reading thread for each sensor
+        for sensor_name in self.sensor.get_sensor_names():
+            self.start_reading(sensor_name)
 
     def set(self, attr: SensorSettings, value: Any) -> Any:
         if attr == SensorSettings.CURRENT_FRAME_INDEX:
-            self.config.current_frame_index = value
+            # Set the current frame index for each sensor
+            for sensor_name in self.sensor.get_sensor_names():
+                self.config.current_frame_index[sensor_name] = value
         else:
             raise TypeError(f"Only 'current_frame_index' can be set, but '{attr}' was provided.")
 
@@ -88,57 +93,81 @@ class FileSensor(TouchSensor):
             raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.")
         return getattr(self.config, attr.name.lower(), None)
 
-    def read(self, attr: DataStream, value: Any = None) -> Image | None:
+    def read(self, attr: DataStream, value: Any = None, sensor_name: str = None) -> Image | None:
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.")
-        if attr == DataStream.FRAME:
-            return self.central_buffer.get()
+        if sensor_name is None:
+            raise ValueError(f"Sensor name must be provided but got {sensor_name}.")
+        if attr == DataStream.FRAME and sensor_name:
+            return self.central_buffers[sensor_name].get()
         else:
-            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute. Returning None.")
+            warnings.warn(f"The provided attribute '{attr}' or sensor '{sensor_name}' did not match any available "
+                          f"attribute or sensor. Returning None.")
             return None
 
-    def show(self, attr: DataStream, recording: bool = False):
+    # TODO: This doesn't work yet
+    def show(self, attr: DataStream, recording: bool = False, sensor_name: str = None):
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.")
 
-        if attr == DataStream.FRAME:
+        def display_frame(s_name: str):
+            cv2.namedWindow(f'File view - {s_name}', cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(f'File view - {s_name}', 640, 480)  # Adjust size as needed
             while True:
-                frame = self.read(DataStream.FRAME)
+                frame = self.read(DataStream.FRAME, sensor_name=s_name)
                 if frame is not None:
-                    cv2.imshow('File view', frame.as_cv2())
+                    cv2.imshow(f'File view - {s_name}', frame.as_cv2())
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
                 else:
                     break
-            cv2.destroyAllWindows()
+            cv2.destroyWindow(f'File view - {s_name}')
+
+        if attr == DataStream.FRAME:
+            if sensor_name:
+                display_frame(sensor_name)
+            else:
+                threads = []
+                for s_name in self.sensor.get_sensor_names():
+                    t = threading.Thread(target=display_frame, args=(s_name,))
+                    t.start()
+                    threads.append(t)
+
+                for t in threads:
+                    t.join()
         else:
-            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute.", stacklevel=2)
+            warnings.warn(
+                f"The provided attribute '{attr}' or sensor '{sensor_name}' did not match any available "
+                f"attribute or sensor.",
+                stacklevel=2)
 
     def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> None:
         # Calibration is not applicable for FileSensor as it reads static files.
         pass
 
     def disconnect(self):
-        self.stop_event.set()
-        if self.reading_thread:
-            self.reading_thread.join()
+        for sensor_name in self.sensor.get_sensor_names():
+            self.stop_events[sensor_name].set()
+            if self.reading_threads[sensor_name]:
+                self.reading_threads[sensor_name].join()
 
-    def start_reading(self):
-        """Start reading data from the file in a separate thread at the fps specified by the ImageReader."""
-        def read_file():
+    def start_reading(self, sensor_name: str):
+        """Start reading data from the file in a separate thread for the given sensor at the fps specified by the
+        ImageReader."""
+        def read_file(s_name: str):
             interval = 1.0 / self.sensor.fps
-            while not self.stop_event.is_set():
+            while not self.stop_events[s_name].is_set():
                 start_time = time.time()
-                frame = self.sensor.get_next_frame()
+                frame = self.sensor.get_next_frame(s_name)
                 if frame:
-                    self.central_buffer.put(frame)
+                    self.central_buffers[s_name].put(frame)
                 elapsed_time = time.time() - start_time
                 time_to_sleep = interval - elapsed_time
                 if time_to_sleep > 0:
                     time.sleep(time_to_sleep)
 
-        self.reading_thread = threading.Thread(target=read_file)
-        self.reading_thread.start()
+        self.reading_threads[sensor_name] = threading.Thread(target=read_file, args=(sensor_name,))
+        self.reading_threads[sensor_name].start()
 
     def start_recording(self) -> None:
         pass

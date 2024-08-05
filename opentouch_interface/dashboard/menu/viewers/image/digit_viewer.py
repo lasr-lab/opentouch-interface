@@ -1,5 +1,7 @@
+from streamlit.delta_generator import DeltaGenerator
+
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
-from opentouch_interface.interface.options import SensorSettings
+from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
 import streamlit as st
@@ -8,6 +10,8 @@ import streamlit as st
 class DigitViewer(BaseImageViewer):
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor=sensor)
+        self.image_widget = None
+
         self.sensor_name: str = self.sensor.config.sensor_name
         self.streams_key: str = f"streams_{self.sensor_name}"
         self.brightness_key: str = f"brightness_{self.sensor_name}"
@@ -67,3 +71,31 @@ class DigitViewer(BaseImageViewer):
 
         self.sensor.set(SensorSettings.RESOLUTION, value=resolution)
         self.sensor.set(SensorSettings.FPS, value=fps)
+
+    def update_delta_generator(self, dg: DeltaGenerator):
+        """
+        Update the delta generator for rendering frames.
+        """
+        self.container = dg.container(border=True)
+        self.title = self.container.empty()
+        self.left, self.right = self.container.columns(2)
+        self.dg = dg
+        self.image_widget = self.left.image([])
+
+    def render_frame(self):
+        """
+        Render the current frame to the image widget.
+        """
+
+        def get_frame():
+            """
+            Get the current frame from the sensor.
+            """
+            data = self.sensor.read(DataStream.FRAME)
+            if data is not None:
+                return data.as_cv2()
+            return None
+
+        frame = get_frame()
+        if frame is not None and self.image_widget is not None:
+            self.image_widget.image(frame)
