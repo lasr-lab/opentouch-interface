@@ -1,4 +1,10 @@
+import os
+import random
+from typing import List
+
+import h5py
 from streamlit.delta_generator import DeltaGenerator
+import streamlit as st
 
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.interface.options import DataStream
@@ -7,7 +13,11 @@ from opentouch_interface.interface.touch_sensor import TouchSensor
 
 class FileViewer(BaseImageViewer):
     def __init__(self, sensor: TouchSensor):
-        super().__init__(sensor)
+        # Load payload from .h5 file
+        super().__init__(sensor=sensor, payload=sensor.sensor.get_payload())
+
+        for element in self.payload:
+            element["key"] = random.random()
 
         self.sensor_names = self.sensor.sensor.get_sensor_names()
         self.image_widgets = []
@@ -50,6 +60,7 @@ class FileViewer(BaseImageViewer):
         self.left, self.right = self.container.columns(2)
         self.dg = dg
         self.image_widgets = [self.left.image([]) for _ in range(len(self.sensor_names))]
+        self.payload_title = self.container.empty()
 
     def render_frame(self):
         """
@@ -61,3 +72,53 @@ class FileViewer(BaseImageViewer):
 
             if frame is not None and self.image_widgets[index] is not None:
                 self.image_widgets[index].image(frame)
+
+    def render_payload(self):
+        if self.payload is None or not isinstance(self.payload, List):
+            return
+
+        self.payload_title.markdown(f"### Payload for sensor '{self.sensor.config.sensor_name}'")
+
+        print(self.payload)
+
+        with self.container:
+            for element in self.payload:
+                element_type = element['type']
+
+                if element_type == "slider":
+                    st.slider(
+                        label=element.get("label", "Some slider input"),
+                        min_value=element.get("min_value", 0),
+                        max_value=element.get("max_value", 100),
+                        value=element.get("current_value", 0),
+                        step=1,
+                        label_visibility="visible",
+                        key=element["key"],
+                        on_change=self.persist_payload
+                    )
+
+                elif element_type == "text_input":
+                    st.text_input(
+                        label=element.get("label", "Some text input"),
+                        value=element.get("current_value", ""),
+                        label_visibility="visible",
+                        key=element["key"],
+                        on_change=self.persist_payload
+                    )
+
+    def persist_payload(self):
+        # Update payload
+        for element in self.payload:
+            key = element["key"]
+
+            if key in st.session_state:
+                element["current_value"] = st.session_state[key]
+
+        # Save payload to disk
+        path = self.sensor.config.path
+        if os.path.exists(path):
+            with h5py.File(path, 'r+') as hf:
+                # print(f"Old: {hf.attrs['payload']}\n")
+                # print(f"Setting to: {self.payload}\n")
+                hf.attrs['payload'] = str(self.payload)
+                # print(f"New: {hf.attrs['payload']}\n")

@@ -236,8 +236,8 @@ class DigitSensor(TouchSensor):
 
         def record_data():
             interval = 1.0 / self.config.recording_frequency
-            with ImageWriter(file_path=self.config.path, fps=self.config.recording_frequency,
-                             sensor_name=self.config.sensor_name) as recorder:
+            with ImageWriter(file_path=self.config.path, sensor_name=self.config.sensor_name,
+                             config=self._to_filtered_dict()) as recorder:
                 while not self.stop_event.is_set():
                     start_time = time.time()
                     image = self.read(attr=DataStream.FRAME)
@@ -257,3 +257,14 @@ class DigitSensor(TouchSensor):
             self.stop_event.set()
             self.recording_thread.join()
             self.recording_thread = None
+
+    def _to_filtered_dict(self):
+        """Returns a dictionary with specific attribute-value pairs."""
+        include_keys = [
+            'sensor_name', 'sensor_type', 'serial_id', 'manufacturer',
+            'fps', 'intensity', 'resolution', 'stream',
+            'sampling_frequency', 'recording_frequency'
+        ]
+        data = self.config.dict()
+        filtered_data = {key: value for key, value in data.items() if key in include_keys}
+        return filtered_data

@@ -1,3 +1,5 @@
+import ast
+import datetime
 from io import BytesIO
 import threading
 
@@ -22,10 +24,10 @@ class Image:
 class ImageWriter:
     _file_lock = threading.Lock()  # Class-level lock
 
-    def __init__(self, file_path: str, fps: int, sensor_name: str):
+    def __init__(self, file_path: str, sensor_name: str, config: dict):
         self.file_path = file_path
         self.frames_buffer = []
-        self.fps = fps
+        self.config = config
         self.total_frames = self._get_total_frames(sensor_name)
         self.sensor_name = sensor_name
 
@@ -53,9 +55,15 @@ class ImageWriter:
 
         with ImageWriter._file_lock:  # Ensure exclusive access
             with h5py.File(self.file_path, 'a') as hf:
+
+                # Save general metadata for that .h5 file
+                hf.attrs['last-edited'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                hf.attrs['version'] = 1
+
+                # Save sensor-specific information (config and data)
                 if self.sensor_name not in hf:
                     group = hf.create_group(self.sensor_name)
-                    hf.attrs['fps'] = self.fps  # Save FPS as an attribute of the file
+                    group.attrs['config'] = str(self.config)
                 else:
                     group = hf[self.sensor_name]
 
@@ -161,3 +169,8 @@ class ImageReader:
         with self._open_file() as hf:
             # List top-level groups, which represent sensors
             return list(hf.keys())
+
+    def get_payload(self):
+        with self._open_file() as hf:
+            payload = hf.attrs['payload']
+            return ast.literal_eval(payload)

@@ -12,4 +12,5 @@ if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
     )
 
 sensor_viewer.render_settings()
+sensor_viewer.render_payload()
 sensor_viewer.render_data()

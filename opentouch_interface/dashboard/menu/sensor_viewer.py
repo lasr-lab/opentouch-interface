@@ -35,6 +35,10 @@ class SensorViewer:
             for viewer in self.viewers:
                 viewer.render_frame()
 
+    def render_payload(self):
+        for viewer in self.viewers:
+            viewer.render_payload()
+
     def select_group(self):
         left, middle, right = st.columns(spec=[0.3, 0.4, 0.3])
         with left:
@@ -78,6 +82,8 @@ class SensorViewer:
         for viewer in viewers:
             if st.session_state['recording_state']:
                 viewer.sensor.stop_recording()
+                viewer.persist_payload()
+
             else:
                 viewer.sensor.start_recording()
         st.session_state['recording_state'] = not st.session_state['recording_state']
