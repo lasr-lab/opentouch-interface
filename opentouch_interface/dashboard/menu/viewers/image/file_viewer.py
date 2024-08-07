@@ -79,8 +79,6 @@ class FileViewer(BaseImageViewer):
 
         self.payload_title.markdown(f"### Payload for sensor '{self.sensor.config.sensor_name}'")
 
-        print(self.payload)
-
         with self.container:
             for element in self.payload:
                 element_type = element['type']
@@ -94,7 +92,6 @@ class FileViewer(BaseImageViewer):
                         step=1,
                         label_visibility="visible",
                         key=element["key"],
-                        on_change=self.persist_payload
                     )
 
                 elif element_type == "text_input":
@@ -103,8 +100,14 @@ class FileViewer(BaseImageViewer):
                         value=element.get("current_value", ""),
                         label_visibility="visible",
                         key=element["key"],
-                        on_change=self.persist_payload
                     )
+
+            st.button(
+                label="Save changes",
+                type="primary",
+                disabled=False,
+                on_click=self.persist_payload,
+            )
 
     def persist_payload(self):
         # Update payload
@@ -118,7 +121,4 @@ class FileViewer(BaseImageViewer):
         path = self.sensor.config.path
         if os.path.exists(path):
             with h5py.File(path, 'r+') as hf:
-                # print(f"Old: {hf.attrs['payload']}\n")
-                # print(f"Setting to: {self.payload}\n")
                 hf.attrs['payload'] = str(self.payload)
-                # print(f"New: {hf.attrs['payload']}\n")

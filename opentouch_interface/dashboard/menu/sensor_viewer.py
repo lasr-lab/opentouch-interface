@@ -82,7 +82,6 @@ class SensorViewer:
         for viewer in viewers:
             if st.session_state['recording_state']:
                 viewer.sensor.stop_recording()
-                viewer.persist_payload()
 
             else:
                 viewer.sensor.start_recording()

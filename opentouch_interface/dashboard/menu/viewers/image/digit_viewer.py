@@ -142,6 +142,13 @@ class DigitViewer(BaseImageViewer):
                         key=element["key"],
                     )
 
+            st.button(
+                label="Save changes",
+                type="primary",
+                disabled=not os.path.exists(self.sensor.config.path),
+                on_click=self.persist_payload,
+            )
+
     def persist_payload(self):
         # Update payload
         for element in self.payload:
