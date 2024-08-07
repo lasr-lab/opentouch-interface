@@ -2,8 +2,6 @@ import logging
 
 import hydra
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
-from opentouch_interface.interface.options import SensorSettings, DataStream
-from opentouch_interface.interface.touch_sensor import TouchSensor
 from omegaconf import DictConfig
 
 # Configure logging to capture debug messages (optional)
@@ -14,10 +12,10 @@ logging.basicConfig(level=logging.DEBUG)
 def run(cfg: DictConfig):
 
     # Create a sensor object
-    sensor = OpentouchInterface(TouchSensor.SensorType[cfg.sensor.type])
+    sensor = OpentouchInterface(config=cfg)
 
-    # Initialize the sensor with name, serial ID and path for reading and storing sensor data
-    sensor.initialize(name=cfg.sensor.name, serial=cfg.sensor.serial_id, path=cfg.sensor.path)
+    # Initialize the sensor
+    sensor.initialize()
 
     # Connect to the sensor
     sensor.connect()
@@ -26,17 +24,13 @@ def run(cfg: DictConfig):
     sensor.calibrate()
 
     # Set lighting intensity
-    sensor.set(SensorSettings.INTENSITY, value=cfg.sensor.lighting)
-
-    # Set camera resolution and frame rate
-    sensor.set(SensorSettings.RESOLUTION, value=cfg.sensor.resolution)
-    sensor.set(SensorSettings.FPS, value=cfg.sensor.fps)
+    # sensor.set(SensorSettings.INTENSITY, value=0)
 
     # Display information about sensor
     sensor.info()
 
     # Display a video stream of the sensor data
-    sensor.show(attr=DataStream[cfg.sensor.stream], recording=cfg.sensor.recording)
+    sensor.show(attr=sensor.config.stream)
 
     # Close the connection to the sensor
     sensor.disconnect()

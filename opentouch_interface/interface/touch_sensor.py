@@ -1,7 +1,11 @@
+import pprint
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
+from pydantic import BaseModel
+
+from opentouch_interface.interface.dataclasses.image import Image
 from opentouch_interface.interface.options import SensorSettings, DataStream
 
 
@@ -18,24 +22,20 @@ class TouchSensor(ABC):
         GELSIGHT_MINI = "Gelsight Mini"
         FILE = "File"
 
-    def __init__(self, sensor_type: SensorType):
+    def __init__(self, config: BaseModel):
         """
         Initializes the touch sensor with a specific type.
 
-        :param sensor_type: The type of the touch sensor (e.g., DIGIT, GELSIGHT_MINI, FILE).
+        :param config: Config for that sensor
         """
-        self.sensor_type = sensor_type
+        self.config = config
         self.sensor = None
-        self.settings = {}
 
     @abstractmethod
-    def initialize(self, name: str, serial: str, path: str) -> None:
+    def initialize(self) -> None:
         """
         Initialize the touch sensor with necessary parameters.
 
-        :param name: Name of the sensor.
-        :param serial: Serial number of the sensor.
-        :param path: Path where data is stored (and can be loaded from) when the sensor data is recorded.
         :return: None.
         """
         pass
@@ -94,25 +94,28 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def show(self, attr: DataStream, recording: bool = False) -> None:
+    def show(self, attr: DataStream) -> None:
         """
         Show the data stream from the touch sensor.
 
         :param attr: The data stream to show (defined in Streams).
-        :param recording: Whether to record the data while showing it.
         :return: None.
         """
         pass
 
-    @abstractmethod
-    def info(self, verbose: bool = True) -> dict:
-        """
-        Get information about the touch sensor.
+    def info(self, verbose: bool = True):
+        def format_value(value):
+            if isinstance(value, list) and all(isinstance(item, Image) for item in value):
+                # Truncate or summarize the list of Image objects
+                return f"{len(value)} images"
+            return value
 
-        :param verbose: Whether to print detailed information.
-        :return: A dictionary containing sensor information.
-        """
-        pass
+        if verbose:
+            formatted_dict = {k: format_value(v) for k, v in self.config.dict().items()}
+            pprint.pprint(formatted_dict)
+
+        # Return the potentially formatted dictionary
+        return {k: format_value(v) for k, v in self.config.dict().items()}
 
     @abstractmethod
     def disconnect(self) -> None:
@@ -121,5 +124,19 @@ class TouchSensor(ABC):
 
         This method should be implemented to handle any necessary
         operations to properly disconnect the sensor from its data source.
+        """
+        pass
+
+    @abstractmethod
+    def start_recording(self) -> None:
+        """
+        Start the recording of the touch sensor.
+        """
+        pass
+
+    @abstractmethod
+    def stop_recording(self) -> None:
+        """
+        Stop the recording of the touch sensor.
         """
         pass

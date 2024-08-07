@@ -1,9 +1,7 @@
-type: "FILE"
-name: "Image reader"    # Options: Choose arbitrary name
-serial_id: null         # Options: None
-lighting: null          # Options: None
-resolution: null        # Options: None
-fps: null               # Options: None
-stream: "FRAME"         # Options: FRAME
-recording: null        # Options: False
-path: "frames.h5"       # Enter path to file you want to read (must have .h5 ending)
+# Mandatory
+sensor_type: "FILE"           # Sensor type. Use FILE here.
+sensor_name: "Image reader"   # Name of the sensor (can be arbitrary)
+path: "recordings.h5"          # File path where recorded data is read from. Must be a .h5 file.
+
+# Optional
+stream: "FRAME"               # Which data stream should be retrieved? Default is FRAME.
