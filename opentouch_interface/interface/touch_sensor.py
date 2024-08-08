@@ -51,7 +51,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def calibrate(self, num_frames: int, skip_frames: int) -> Any:
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Any:
         """
         Calibrate the touch sensor.
 

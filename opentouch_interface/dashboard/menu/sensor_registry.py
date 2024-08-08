@@ -1,13 +1,16 @@
 import base64
 from io import StringIO
-from typing import Optional
+from typing import Optional, Dict, List, Any
 
 import streamlit as st
 import yaml
 from omegaconf import DictConfig, OmegaConf
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.factory import ViewerFactory
+from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
+from opentouch_interface.interface.dataclasses.viewer_group import ViewerGroup
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
@@ -56,6 +59,11 @@ class SensorForm:
 
 class SensorRegistry:
     def __init__(self):
+
+        # Crete a GroupRegistry in session state
+        if 'group_registry' not in st.session_state:
+            st.session_state.group_registry = GroupRegistry()
+
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
             "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
@@ -86,23 +94,45 @@ class SensorRegistry:
                     label_visibility="collapsed"
                 )
                 if config is not None:
-                    dict_config = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
+                    dict_config: Dict = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
 
-                    payload = None
-                    if 'elements' in dict_config:
-                        payload = dict_config['elements']
-                        del dict_config['elements']
+                    # Check if the config file contains a group or just a single sensor
+                    if 'group' in dict_config:
+                        dict_config: List[Dict[str, Any]] = dict_config['group']
 
-                    omc_config = OmegaConf.create(dict_config)
+                        group_name: str = f'Group {st.session_state.group_registry.group_count}'
+                        sensors: List[Dict[str, Any]] = []
+                        payload: List[Dict[str, Any]] = []
 
-                    # If using the dashboard, recording must be activated manually
-                    omc_config['recording'] = False
+                        for item in dict_config:
+                            if 'group_name' in item:
+                                group_name = item['group_name']
+                            elif 'sensors' in item:
+                                sensors = item['sensors']
+                            elif 'payload' in item:
+                                payload = item['payload']
 
-                    self.add_sensor(sensor_type=TouchSensor.SensorType[omc_config['sensor_type']],
-                                    config=omc_config,
-                                    payload=payload)
+                        for sensor in sensors:
+                            sensor['recording'] = False
 
-                    # Maybe remove sensor_type as it can be retrieved from the config
+                        self.add_group(group_name=group_name, sensor_configs=sensors, payload=payload)
+
+                    else:
+                        payload = []
+                        if 'payload' in dict_config:
+                            payload = dict_config['payload']
+                            del dict_config['payload']
+
+                        omc_config = OmegaConf.create(dict_config)
+
+                        # If using the dashboard, recording must be activated manually
+                        omc_config['recording'] = False
+
+                        self.add_sensor(sensor_type=TouchSensor.SensorType[omc_config['sensor_type']],
+                                        config=omc_config,
+                                        payload=payload)
+
+                        # Maybe remove sensor_type as it can be retrieved from the config
 
             if sensor_type is not None:
                 selected_sensor = self.mapping[sensor_type]
@@ -194,28 +224,50 @@ class SensorRegistry:
                     file=SensorAttribute(file, True)
                 )
 
-    def add_sensor(self, sensor_type: TouchSensor.SensorType, config: DictConfig, payload: dict = None):
-        # If not already existent, create a list for viewers in session state
-        if 'viewers' not in st.session_state:
-            st.session_state.viewers = []
+    @staticmethod
+    def add_group(group_name: str, sensor_configs: List[Dict[str, Any]], payload: List[Dict[str, Any]]):
 
-        # Check if a sensor with that name already exists
-        if any(e.sensor.config.sensor_name == config.sensor_name for e in st.session_state.viewers):
-            st.error(body=f"Sensor named '{config.sensor_name}' already exists!", icon="⚠️")
+        group_registry: GroupRegistry = st.session_state.group_registry
+        sensor_names: List[str] = [viewer.sensor.config.name for viewer in group_registry.get_all_viewers()]
+        new_sensor_names: List[str] = [sensor_config['sensor_name'] for sensor_config in sensor_configs]
+
+        # First, check if there are any non-unique sensor names
+        duplicates: List[str] = [name for name in new_sensor_names if name in sensor_names]
+
+        if duplicates:
+            st.error(body=f"The sensor names {duplicates} are not unique either inside the group or are already "
+                          f"registered in other groups!", icon="⚠️")
             return
 
         try:
-            sensor = OpentouchInterface(config=config)
-            sensor.initialize()
-            sensor.connect()
-            sensor.calibrate()
+            # For each sensor config, create a sensor
+            viewers: List[BaseImageViewer] = []
+            for sensor_config in sensor_configs:
+                config = OmegaConf.create(sensor_config)
 
-            # Create a viewer and add it to the session state
-            viewer = ViewerFactory(sensor, sensor_type, payload)
-            st.session_state.viewers.append(viewer)
-            st.success(
-                body=f"Sensor {config.sensor_name} ({self.from_type[sensor_type]}) has been successfully added!",
-                icon="💡"
-            )
+                sensor: TouchSensor = OpentouchInterface(config=config)
+                sensor.initialize()
+                sensor.connect()
+                sensor.calibrate()
+
+                sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[config['sensor_type']]
+                viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
+                viewers.append(viewer)
+
+                # Create and save the group
+                group: ViewerGroup = ViewerGroup(group_name=group_name, viewers=viewers, payload=payload)
+                group_registry.add_group(group=group)
+
+                # Output message
+                message = '\n'.join(
+                    f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
+                    for viewer in viewers)
+
+                st.success(
+                    body=f"The following sensors have been successfully added as part of the group '{group_name}': "
+                         f"{message}",
+                    icon="💡"
+                )
+
         except Exception as e:
             st.error(body=e, icon="⚠️")
