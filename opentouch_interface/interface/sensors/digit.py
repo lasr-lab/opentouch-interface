@@ -29,7 +29,7 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
     """The manufacturer of the sensor, defaults to an empty string"""
     path: Optional[str] = None
     """The file path for saving data, defaults to None."""
-    fps: int = Field(30, description="Frame rate (must be 30 or 60)")
+    fps: int = Field(60, description="Frame rate (must be 30 or 60)")
     """The frame rate, must be either 30 or 60, defaults to 30."""
     intensity: int = Field(15, ge=0, le=15, description="Intensity level (0-15)")
     """The intensity level, ranges from 0 to 15, defaults to 15."""
@@ -250,6 +250,7 @@ class DigitSensor(TouchSensor):
 
         self.recording_thread = threading.Thread(target=record_data)
         self.recording_thread.start()
+        self.config.recording = True
 
     def stop_recording(self):
         """Stop the ongoing recording."""
@@ -257,6 +258,8 @@ class DigitSensor(TouchSensor):
             self.stop_event.set()
             self.recording_thread.join()
             self.recording_thread = None
+
+        self.config.recording = False
 
     def _to_filtered_dict(self):
         """Returns a dictionary with specific attribute-value pairs."""

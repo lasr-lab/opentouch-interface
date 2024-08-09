@@ -4,7 +4,7 @@ from typing import Optional, Dict, List, Any
 
 import streamlit as st
 import yaml
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
@@ -43,27 +43,22 @@ class SensorForm:
                 return False
         return True
 
-    def to_omc_config(self) -> DictConfig:
+    def to_dict(self) -> Dict[str, Any]:
         file_content = None
         if self.file is not None and self.file.value:
             file_content = base64.b64encode(self.file.value.getvalue()).decode('utf-8')
 
-        return OmegaConf.create({
+        return {
             "sensor_type": self.sensor_type.value,
             "sensor_name": self.name.value if self.name is not None else None,
             "serial_id": self.serial.value if self.serial is not None else None,
             "path": self.path.value if self.path is not None else None,
             "file": file_content,
-        })
+        }
 
 
 class SensorRegistry:
     def __init__(self):
-
-        # Crete a GroupRegistry in session state
-        if 'group_registry' not in st.session_state:
-            st.session_state.group_registry = GroupRegistry()
-
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
             "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
@@ -96,13 +91,13 @@ class SensorRegistry:
                 if config is not None:
                     dict_config: Dict = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
 
+                    group_name: str = f'Group {st.session_state.group_registry.group_count}'
+                    sensors: List[Dict[str, Any]] = []
+                    payload: List[Dict[str, Any]] = []
+
                     # Check if the config file contains a group or just a single sensor
                     if 'group' in dict_config:
                         dict_config: List[Dict[str, Any]] = dict_config['group']
-
-                        group_name: str = f'Group {st.session_state.group_registry.group_count}'
-                        sensors: List[Dict[str, Any]] = []
-                        payload: List[Dict[str, Any]] = []
 
                         for item in dict_config:
                             if 'group_name' in item:
@@ -112,42 +107,34 @@ class SensorRegistry:
                             elif 'payload' in item:
                                 payload = item['payload']
 
-                        for sensor in sensors:
-                            sensor['recording'] = False
-
-                        self.add_group(group_name=group_name, sensor_configs=sensors, payload=payload)
-
                     else:
-                        payload = []
-                        if 'payload' in dict_config:
-                            payload = dict_config['payload']
-                            del dict_config['payload']
+                        payload = dict_config.pop('payload', [])
+                        group_name = dict_config['sensor_name']
+                        sensors = [dict_config]
 
-                        omc_config = OmegaConf.create(dict_config)
+                    # If using the dashboard, recording must be activated manually
+                    for sensor in sensors:
+                        sensor['recording'] = False
 
-                        # If using the dashboard, recording must be activated manually
-                        omc_config['recording'] = False
-
-                        self.add_sensor(sensor_type=TouchSensor.SensorType[omc_config['sensor_type']],
-                                        config=omc_config,
-                                        payload=payload)
-
-                        # Maybe remove sensor_type as it can be retrieved from the config
-
-            if sensor_type is not None:
-                selected_sensor = self.mapping[sensor_type]
+                    self.add_group(group_name=group_name, sensor_configs=sensors, payload=payload)
 
             if sensor_type:
-                form = self.render_input_fields(sensor_type=selected_sensor)
+                selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
+                form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
+
+                group_name = form.name.value
+                sensors: List[Dict[str, Any]] = [form.to_dict()]
+                payload: List[Dict[str, Any]] = []
+
                 st.button(
                     label="Add sensor",
                     type="primary",
                     disabled=not form.is_filled(),
-                    on_click=self.add_sensor,
-                    args=(selected_sensor, form.to_omc_config())
+                    on_click=self.add_group,
+                    args=(group_name, sensors, payload)
                 )
 
-            if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
+            if st.session_state.group_registry.viewer_count() == 0:
                 st.info(
                     body="To add a new sensor to the 'Live View' page, you can either manually enter the sensor "
                          "details or select a YAML file containing the sensor's configuration.",

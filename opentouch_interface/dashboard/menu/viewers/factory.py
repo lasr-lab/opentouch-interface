@@ -8,11 +8,11 @@ class ViewerFactory:
     """
     Factory class to create instances of viewer classes based on sensor type.
     """
-    def __new__(cls, sensor: TouchSensor, sensor_type: 'TouchSensor.SensorType', payload: List = None, *args, **kwargs):
+    def __new__(cls, sensor: TouchSensor, sensor_type: 'TouchSensor.SensorType', *args, **kwargs):
         if sensor_type == TouchSensor.SensorType.DIGIT:
             try:
                 from opentouch_interface.dashboard.menu.viewers.image.digit_viewer import DigitViewer
-                return DigitViewer(sensor, payload=payload)
+                return DigitViewer(sensor)
             except ImportError as e:
                 raise ImportError("DigitViewer dependencies are not installed. Please install them using 'pip install"
                                   "digit-interface'") from e
