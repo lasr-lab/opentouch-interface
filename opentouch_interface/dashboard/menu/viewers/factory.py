@@ -1,5 +1,3 @@
-from typing import List
-
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from opentouch_interface.dashboard.menu.viewers.image.file_viewer import FileViewer
 

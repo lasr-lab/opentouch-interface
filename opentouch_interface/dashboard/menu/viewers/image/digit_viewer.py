@@ -27,7 +27,7 @@ class DigitViewer(BaseImageViewer):
         """
 
         # Render heading with sensor name
-        self.title.markdown(f"### Settings for sensor '{self.sensor_name}'")
+        self.title.markdown(f"##### Sensor '{self.sensor_name}'")
 
         # Check if saved state already is in session state
         if self.brightness_state is None:
