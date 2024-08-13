@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from typing import Optional
 
 from streamlit.delta_generator import DeltaGenerator
 
@@ -11,26 +12,34 @@ class BaseImageViewer(ABC):
     """
     def __init__(self, sensor: TouchSensor):
         self.sensor: TouchSensor = sensor
-        self.dg = None
-        self.left = None
-        self.right = None
-        self.container = None
-        self.title = None
-        self.payload_title = None
-        self.group = "all"
+
+        self.sensor_name: str = self.sensor.config.sensor_name
+
+        self.container: Optional[DeltaGenerator] = None
+        self.title: Optional[DeltaGenerator] = None
+        self.left: Optional[DeltaGenerator] = None
+        self.right: Optional[DeltaGenerator] = None
+        self.image_widget: Optional[DeltaGenerator] = None
 
     @abstractmethod
-    def render_options(self):
+    def render_options(self) -> None:
+        """
+        Render options of the viewer.
+        """
         pass
 
     @abstractmethod
-    def update_delta_generator(self, dg: DeltaGenerator):
-        """
-        Update the delta generator for rendering frames.
-        """
-
-    @abstractmethod
-    def render_frame(self):
+    def render_frame(self) -> None:
         """
         Render the current frame to the image widget.
         """
+        pass
+
+    def update_container(self, container: DeltaGenerator) -> None:
+        """
+        Update the container for rendering frames.
+        """
+        self.container = container.container(border=True)
+        self.title = self.container.empty()
+        self.left, self.right = self.container.columns(2)
+        self.image_widget = self.left.image([])

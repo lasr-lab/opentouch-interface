@@ -1,6 +1,6 @@
 import threading
 
-from opentouch_interface.interface.dataclasses.image import Image
+from opentouch_interface.interface.dataclasses.image.image import Image
 
 
 class CentralBuffer:

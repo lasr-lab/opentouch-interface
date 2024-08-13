@@ -1,15 +1,14 @@
 import base64
-from io import StringIO
 from typing import Optional, Dict, List, Any
 
 import streamlit as st
-import yaml
 from omegaconf import OmegaConf
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.factory import ViewerFactory
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
+from opentouch_interface.interface.dataclasses.validator import Validator
 from opentouch_interface.interface.dataclasses.viewer_group import ViewerGroup
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
 from opentouch_interface.interface.touch_sensor import TouchSensor
@@ -61,11 +60,8 @@ class SensorRegistry:
     def __init__(self):
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
-            "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
-            "File": TouchSensor.SensorType.FILE
+            # "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
         }
-
-        self.from_type = {value: key for key, value in self.mapping.items()}
 
         self.container = st.container(border=False)
 
@@ -81,63 +77,47 @@ class SensorRegistry:
                 label_visibility="visible"
             )
 
-            if sensor_type is None:
-                config = st.file_uploader(
-                    label="Or choose sensor config",
-                    type=['yaml'],
-                    accept_multiple_files=False,
-                    label_visibility="collapsed"
-                )
-                if config is not None:
-                    dict_config: Dict = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
+            group_name: str
+            path = Optional[str]
+            sensors: List[Dict[str, Any]]
+            payload: List[Dict[str, Any]]
 
-                    group_name: str = f'Group {st.session_state.group_registry.group_count}'
-                    sensors: List[Dict[str, Any]] = []
-                    payload: List[Dict[str, Any]] = []
-
-                    # Check if the config file contains a group or just a single sensor
-                    if 'group' in dict_config:
-                        dict_config: List[Dict[str, Any]] = dict_config['group']
-
-                        for item in dict_config:
-                            if 'group_name' in item:
-                                group_name = item['group_name']
-                            elif 'sensors' in item:
-                                sensors = item['sensors']
-                            elif 'payload' in item:
-                                payload = item['payload']
-
-                    else:
-                        payload = dict_config.pop('payload', [])
-                        group_name = dict_config['sensor_name']
-                        sensors = [dict_config]
-
-                    # If using the dashboard, recording must be activated manually
-                    for sensor in sensors:
-                        sensor['recording'] = False
-
-                    self.add_group(group_name=group_name, sensor_configs=sensors, payload=payload)
-
+            # The sensor is added manually via an input form
             if sensor_type:
                 selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
                 form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
 
                 group_name = form.name.value
-                sensors: List[Dict[str, Any]] = [form.to_dict()]
-                payload: List[Dict[str, Any]] = []
+                path = form.path.value
+                sensors = [form.to_dict()]
 
                 st.button(
                     label="Add sensor",
                     type="primary",
                     disabled=not form.is_filled(),
                     on_click=self.add_group,
-                    args=(group_name, sensors, payload)
+                    args=(group_name, path, sensors, payload)
                 )
+
+            # The sensor is added via a YAML or h5 file
+            else:
+                file: UploadedFile = st.file_uploader(
+                    label="Or choose sensor config",
+                    type=['yaml', 'h5'],
+                    accept_multiple_files=False,
+                    label_visibility="collapsed"
+                )
+
+                if file:
+                    validator = Validator(file=file)
+                    group_name, path, sensors, payload = validator.validate()
+
+                    self.add_group(group_name=group_name, path=path, sensor_configs=sensors, payload=payload)
 
             if st.session_state.group_registry.viewer_count() == 0:
                 st.info(
                     body="To add a new sensor to the 'Live View' page, you can either manually enter the sensor "
-                         "details or select a YAML file containing the sensor's configuration.",
+                         "details or select a YAML or h5 file containing the sensor's configuration.",
                     icon="💡"
                 )
 
@@ -169,50 +149,29 @@ class SensorRegistry:
                 path=SensorAttribute(sensor_path, False)
             )
 
-        elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-            with self.container:
-                sensor_name = st.text_input(
-                    label="Name your file sensor",
-                    value=None,
-                    placeholder="Sensor name (e.g., Thumb)",
-                    label_visibility="collapsed"
-                )
-                sensor_path = st.text_input(
-                    label="Where is the .h5 file located?",
-                    value=None,
-                    placeholder="Path to example.h5 (optional)",
-                    label_visibility="collapsed"
-                )
-                return SensorForm(
-                    sensor_type=SensorAttribute(sensor_type.name, True),
-                    name=SensorAttribute(sensor_name, True),
-                    path=SensorAttribute(sensor_path, False)
-                )
-
-        elif sensor_type == TouchSensor.SensorType.FILE:
-            with self.container:
-                sensor_name = st.text_input(
-                    label="Name your file sensor",
-                    value=None,
-                    placeholder="Sensor name (e.g., Thumb)",
-                    label_visibility="collapsed"
-                )
-
-                file = st.file_uploader(
-                    label="Upload your .h5 file",
-                    type=['h5'],
-                    accept_multiple_files=False,
-                    label_visibility="collapsed"
-                )
-
-                return SensorForm(
-                    sensor_type=SensorAttribute(sensor_type.name, True),
-                    name=SensorAttribute(sensor_name, True),
-                    file=SensorAttribute(file, True)
-                )
+        # elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
+        #     with self.container:
+        #         sensor_name = st.text_input(
+        #             label="Name your file sensor",
+        #             value=None,
+        #             placeholder="Sensor name (e.g., Thumb)",
+        #             label_visibility="collapsed"
+        #         )
+        #         sensor_path = st.text_input(
+        #             label="Where is the .h5 file located?",
+        #             value=None,
+        #             placeholder="Path to example.h5 (optional)",
+        #             label_visibility="collapsed"
+        #         )
+        #         return SensorForm(
+        #             sensor_type=SensorAttribute(sensor_type.name, True),
+        #             name=SensorAttribute(sensor_name, True),
+        #             path=SensorAttribute(sensor_path, False)
+        #         )
 
     @staticmethod
-    def add_group(group_name: str, sensor_configs: List[Dict[str, Any]], payload: List[Dict[str, Any]]):
+    def add_group(group_name: str, path: Optional[str], sensor_configs: List[Dict[str, Any]],
+                  payload: List[Dict[str, Any]]):
 
         group_registry: GroupRegistry = st.session_state.group_registry
         sensor_names: List[str] = [viewer.sensor.config.name for viewer in group_registry.get_all_viewers()]
@@ -242,7 +201,7 @@ class SensorRegistry:
                 viewers.append(viewer)
 
                 # Create and save the group
-                group: ViewerGroup = ViewerGroup(group_name=group_name, viewers=viewers, payload=payload)
+                group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
                 group_registry.add_group(group=group)
 
                 # Output message

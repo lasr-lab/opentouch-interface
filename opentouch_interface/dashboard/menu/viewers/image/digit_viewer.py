@@ -1,5 +1,3 @@
-from streamlit.delta_generator import DeltaGenerator
-
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
@@ -10,9 +8,7 @@ import streamlit as st
 class DigitViewer(BaseImageViewer):
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor=sensor)
-        self.image_widget = None
 
-        self.sensor_name: str = self.sensor.config.sensor_name
         self.streams_key: str = f"streams_{self.sensor_name}"
         self.brightness_key: str = f"brightness_{self.sensor_name}"
         self.streams_options = ("QVGA, 60 FPS", "VGA, 30 FPS")
@@ -21,7 +17,7 @@ class DigitViewer(BaseImageViewer):
         self.brightness_state = None
         self.streams_state = None
 
-    def render_options(self):
+    def render_options(self) -> None:
         """
         Render options specific to the Digit sensor.
         """
@@ -44,29 +40,30 @@ class DigitViewer(BaseImageViewer):
             st.session_state[self.streams_key] = self.streams_state
 
         # Render resolution and slider selection
-        self.right.selectbox(
-            label="Resolution",
-            options=self.streams_options,
-            on_change=self.update_resolution,
-            key=self.streams_key,
-            disabled=self.sensor.config.recording
-        )
+        with self.right:
+            st.selectbox(
+                label="Resolution",
+                options=self.streams_options,
+                on_change=self._update_resolution,
+                key=self.streams_key,
+                disabled=self.sensor.config.recording
+            )
 
-        self.right.slider(
-            label="Brightness",
-            min_value=0,
-            max_value=15,
-            value=15,
-            on_change=self.update_fps,
-            key=self.brightness_key,
-            disabled=self.sensor.config.recording
-        )
+            st.slider(
+                label="Brightness",
+                min_value=0,
+                max_value=15,
+                value=15,
+                on_change=self._update_fps,
+                key=self.brightness_key,
+                disabled=self.sensor.config.recording
+            )
 
-    def update_fps(self):
+    def _update_fps(self) -> None:
         self.brightness_state = st.session_state[self.brightness_key]
         self.sensor.set(SensorSettings.INTENSITY, value=int(st.session_state[self.brightness_key]))
 
-    def update_resolution(self):
+    def _update_resolution(self) -> None:
         self.streams_state = st.session_state[self.streams_key]
 
         # Parse selected resolution and FPS
@@ -76,30 +73,9 @@ class DigitViewer(BaseImageViewer):
         self.sensor.set(SensorSettings.RESOLUTION, value=resolution)
         self.sensor.set(SensorSettings.FPS, value=fps)
 
-    def update_delta_generator(self, dg: DeltaGenerator):
-        """
-        Update the delta generator for rendering frames.
-        """
-        self.container = dg.container(border=True)
-        self.title = self.container.empty()
-        self.left, self.right = self.container.columns(2)
-        self.dg = dg
-        self.image_widget = self.left.image([])
-
-    def render_frame(self):
-        """
-        Render the current frame to the image widget.
-        """
-
-        def get_frame():
-            """
-            Get the current frame from the sensor.
-            """
-            data = self.sensor.read(DataStream.FRAME)
-            if data is not None:
-                return data.as_cv2()
-            return None
-
-        frame = get_frame()
-        if frame is not None and self.image_widget is not None:
-            self.image_widget.image(frame)
+    def render_frame(self) -> None:
+        """Render the current frame to the image widget."""
+        frame = self.sensor.read(DataStream.FRAME)
+        if frame and self.image_widget:
+            with self.image_widget:
+                st.image(frame.as_cv2())

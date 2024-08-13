@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from opentouch_interface.interface.dataclasses.image import Image
+from opentouch_interface.interface.dataclasses.image.image import Image
 from opentouch_interface.interface.options import SensorSettings, DataStream
 
 

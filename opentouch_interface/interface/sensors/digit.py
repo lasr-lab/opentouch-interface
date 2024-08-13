@@ -1,8 +1,7 @@
 import threading
 import time
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 from datetime import datetime
-import os
 import warnings
 
 import cv2
@@ -10,9 +9,10 @@ import numpy as np
 from pydantic import BaseModel, Field, ValidationError, PrivateAttr, model_validator
 
 from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
+from opentouch_interface.interface.dataclasses.image.Image_writer import ImageWriter
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
-from opentouch_interface.interface.dataclasses.image import Image, ImageWriter
+from opentouch_interface.interface.dataclasses.image.image import Image
 from digit_interface.digit import Digit
 
 
@@ -53,8 +53,9 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
             self.path = f"{self.sensor_type}-{self.sensor_name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
         if not self.path.endswith('.h5'):
             raise ValueError(f"Invalid path '{self.path}': Path must have a .h5 extension")
-        if os.path.exists(self.path):
-            raise ValueError(f"File '{self.path}' already exists")
+        # if os.path.exists(self.path):
+        #     raise ValueError(f"File '{self.path}' already exists")
+        # TODO: Think about this
 
         # Validate fps
         if self.fps not in [30, 60]:
@@ -77,11 +78,12 @@ class DigitSensor(TouchSensor):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config=self._validate_and_update_config(config))
-        self.central_buffer = CentralBuffer()
-        self.reading_thread = None
-        self.recording_thread = None
-        self.stop_event = threading.Event()
-        self.recording_event = threading.Event()
+        self.central_buffer: CentralBuffer = CentralBuffer()
+
+        self.reading_thread: Optional[threading.Thread] = None
+        self.recording_thread: Optional[threading.Thread] = None
+        self.stop_event: threading.Event = threading.Event()
+        self.recording_event: threading.Event = threading.Event()
 
     @staticmethod
     def _validate_and_update_config(config: Dict[str, Any]) -> DigitConfig:
@@ -93,7 +95,7 @@ class DigitSensor(TouchSensor):
     def initialize(self) -> None:
         self.sensor = Digit(serial=self.config.serial_id, name=self.config.sensor_name)
 
-    def connect(self):
+    def connect(self) -> None:
         self.sensor.connect()
         self.set(SensorSettings.RESOLUTION, self.config.resolution)
         self.set(SensorSettings.FPS, self.config.fps)
@@ -172,11 +174,11 @@ class DigitSensor(TouchSensor):
             warnings.warn(f"The provided attribute '{attr}' did not match any available attribute.",
                           stacklevel=2)
 
-    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Image | None:
-        interval = 1.0 / self.config.fps
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Optional[Image]:
+        interval: float = 1.0 / self.config.fps
 
         # Skip the initial frames
-        skipped = 0
+        skipped: int = 0
         while skipped < skip_frames:
             image = self.read(attr=DataStream.FRAME)
             if image is not None:
@@ -202,6 +204,7 @@ class DigitSensor(TouchSensor):
 
     def disconnect(self):
         self.stop_event.set()
+        self.recording_event.set()
         if self.reading_thread:
             self.reading_thread.join()
         if self.recording_thread:
@@ -218,7 +221,8 @@ class DigitSensor(TouchSensor):
                 try:
                     frame = self.sensor.get_frame()
                     if frame is not None:
-                        self.central_buffer.put(Image(image=frame, rotation=(0, 1, 2)))
+                        image = Image(image=frame, rotation=(0, 1, 2))
+                        self.central_buffer.put(image)
                 except Exception as e:
                     print(e)
                 elapsed_time = time.time() - start_time
@@ -237,12 +241,12 @@ class DigitSensor(TouchSensor):
         def record_data():
             interval = 1.0 / self.config.recording_frequency
             with ImageWriter(file_path=self.config.path, sensor_name=self.config.sensor_name,
-                             config=self._to_filtered_dict()) as recorder:
-                while not self.stop_event.is_set():
+                             config=str(self._to_filtered_dict())) as recorder:
+                while not self.recording_event.is_set():
                     start_time = time.time()
                     image = self.read(attr=DataStream.FRAME)
                     if image:
-                        recorder.save(image)
+                        recorder.save_to_buffer(image)
                     elapsed_time = time.time() - start_time
                     time_to_sleep = interval - elapsed_time
                     if time_to_sleep > 0:
@@ -255,19 +259,19 @@ class DigitSensor(TouchSensor):
     def stop_recording(self):
         """Stop the ongoing recording."""
         if self.recording_thread and self.recording_thread.is_alive():
-            self.stop_event.set()
+            self.recording_event.set()
             self.recording_thread.join()
             self.recording_thread = None
 
         self.config.recording = False
 
-    def _to_filtered_dict(self):
+    def _to_filtered_dict(self) -> Dict:
         """Returns a dictionary with specific attribute-value pairs."""
-        include_keys = [
+        include_keys: List[str] = [
             'sensor_name', 'sensor_type', 'serial_id', 'manufacturer',
             'fps', 'intensity', 'resolution', 'stream',
             'sampling_frequency', 'recording_frequency'
         ]
-        data = self.config.dict()
-        filtered_data = {key: value for key, value in data.items() if key in include_keys}
+        data: Dict = self.config.dict()
+        filtered_data: Dict = {key: value for key, value in data.items() if key in include_keys}
         return filtered_data
