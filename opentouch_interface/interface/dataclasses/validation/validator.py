@@ -1,3 +1,4 @@
+import ast
 import datetime
 import os
 from io import StringIO
@@ -9,8 +10,9 @@ import yaml
 from pydantic import BaseModel, Field, model_validator, field_validator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from opentouch_interface.interface.sensors.digit import DigitConfig
-from opentouch_interface.interface.sensors.file_sensor import FileConfig
+from opentouch_interface.interface.dataclasses.image.image import Image
+from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
 
 
 class SliderConfig(BaseModel):
@@ -48,7 +50,6 @@ class PathConfig(BaseModel):
     """Path to the hdf5 file."""
 
     @field_validator('path', mode='before', check_fields=False)
-    @classmethod
     def set_default_path(cls, v):
         if v is None:
             # Access the group count from the session state
@@ -70,7 +71,6 @@ class GroupNameConfig(BaseModel):
     """Group name."""
 
     @field_validator('group_name', mode='before', check_fields=False)
-    @classmethod
     def set_default_group_name(cls, v):
         if v is None:
             # Access the group count from the session state
@@ -92,10 +92,10 @@ class Validator:
 
         self.group_name: str = ""
         self.path: str = ""
-        self.sensors: List[Dict[str, Any]] = []
+        self.sensors: List[Union[DigitConfig, FileConfig]] = []
         self.payload: List[Dict[str, Any]] = []
 
-    def validate(self) -> (str, Optional[str], List[Dict[str, Any]], List[Dict[str, Any]]):
+    def validate(self) -> (str, Optional[str], List[Union[DigitConfig, FileConfig]], List[Dict[str, Any]]):
 
         if self.file:
             if self.file.name.endswith((".yaml", ".yml")):
@@ -128,9 +128,7 @@ class Validator:
             if 'sensor_type' in sensor_dict:
                 sensor_type = sensor_dict['sensor_type']
                 if sensor_type == 'DIGIT':
-                    self.sensors.append(DigitConfig(**sensor_dict).dict())
-                elif sensor_type == 'FILE':
-                    self.sensors.append(FileConfig(**sensor_dict).dict())
+                    self.sensors.append(DigitConfig(**sensor_dict))
                 # Add more configs for other sensors here
 
                 else:
@@ -157,12 +155,33 @@ class Validator:
         """
 
         with h5py.File(self.file, 'r') as hf:
+            # Check if all attributes are available
+            if 'group_name' not in hf.attrs:
+                raise ValueError(f"File '{self.file}' has no group name")
+            if 'path' not in hf.attrs:
+                raise ValueError(f"File '{self.file}' does not specify a path")
+            if len(hf.keys()) == 0:
+                raise ValueError(f"File '{self.file}' does not contain any sensors")
+
+            # Extract attributes from h5 file
+
+            # Use GroupNameConfig here to make sure no group with the same group name is currently in use
+            self.group_name = GroupNameConfig(group_name=hf.attrs['group_name']).group_name
+            self.path = hf.attrs['path']
+
             if 'payload' in hf.attrs:
-                self.payload = hf.attrs['payload']
+                self.payload = ast.literal_eval(hf.attrs['payload'])
 
             for sensor_name in hf.keys():
                 group = hf[sensor_name]
-                config = group['config']
+                config = ast.literal_eval(group.attrs['config'])
 
-                for dataset_name in group:
-                    dataset = group[dataset_name]
+                images: List[Image] = []
+                for key in group.keys():
+                    if key.startswith('image_') and key.endswith('_cv2'):
+                        img_data = group[key][()]
+                        images.append(Image(img_data, (0, 1, 2)))
+
+                config['frames'] = images
+                config['sensor_type'] = 'FILE'
+                self.sensors.append(FileConfig(**config))

@@ -7,8 +7,8 @@ from streamlit.delta_generator import DeltaGenerator
 
 from opentouch_interface.dashboard.menu.util import get_clean_rendering_container
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
+from opentouch_interface.dashboard.menu.viewers.image.file_viewer import FileViewer
 from opentouch_interface.interface.dataclasses.image.Image_writer import ImageWriter
-from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class ViewerGroup:
@@ -19,8 +19,12 @@ class ViewerGroup:
         self.viewers: List[BaseImageViewer] = [] if viewers is None else viewers
         self.payload: List[Dict[str, Any]] = payload
 
+        self.has_file_sensors: bool = any(viewer.sensor.config.sensor_type == 'FILE' for viewer in self.viewers)
+
         self.is_recording: bool = False
-        self.wrote_recording: bool = False
+
+        # If the viewer group has file sensors, the user should be allowed to change the payload
+        self.wrote_recording: bool = self.has_file_sensors
         self.container: DeltaGenerator = st.container()
 
     @property
@@ -126,7 +130,7 @@ class ViewerGroup:
                 element["current_value"] = st.session_state[key]
 
         # Save payload to disk
-        ImageWriter.write_attr(file_path=self._path, attribute='path', value=str(self.payload))
+        ImageWriter.write_attr(file_path=self._path, attribute='payload', value=str(self.payload))
 
     def _render_data(self) -> None:
         for viewer in self.viewers:
@@ -140,7 +144,7 @@ class ViewerGroup:
             with recording_container:
 
                 # Only groups that don't have any file sensors associated with them, should be allowed to record
-                if any(viewer.sensor.config.sensor_type == TouchSensor.SensorType.FILE for viewer in self.viewers):
+                if self.has_file_sensors:
                     st.info(
                         body='Recording is only available for groups that don\'t contain file sensors.',
                         icon='💡'
@@ -187,11 +191,34 @@ class ViewerGroup:
                         args=()
                     )
 
+    def _render_video_control(self):
+
+        def restart_videos():
+            for viewer in self.viewers:
+                if isinstance(viewer, FileViewer):
+                    viewer.restart_video()
+
+        if self.has_file_sensors:
+            self.container.markdown('###### Replay panel')
+            with self.container:
+                video_control_container = self.container.container(border=True)
+
+                with video_control_container:
+                    st.button(
+                        label="Restart video",
+                        type="primary",
+                        disabled=False,
+                        use_container_width=True,
+                        on_click=restart_videos,
+                        args=()
+                    )
+
     def render_static(self) -> None:
         st.markdown(f'### Group {self.group_name}')
 
         self._update_stuff()
         self._render_settings()
+        self._render_video_control()
         self._render_recording_control()
         self._render_payload()
 

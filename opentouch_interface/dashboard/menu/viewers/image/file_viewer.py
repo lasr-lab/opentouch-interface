@@ -1,27 +1,23 @@
 import streamlit as st
 
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
+from opentouch_interface.interface.dataclasses.image.image_player import ImagePlayer
 from opentouch_interface.interface.options import DataStream
-from opentouch_interface.interface.touch_sensor import TouchSensor
+from opentouch_interface.interface.sensors.file_sensor import FileSensor
 
 
 class FileViewer(BaseImageViewer):
-    def __init__(self, sensor: TouchSensor):
+    def __init__(self, sensor: FileSensor):
         super().__init__(sensor=sensor)
+
+        self.player: ImagePlayer = self.sensor.sensor
 
     def render_options(self):
         # Render heading with sensor name
         self.title.markdown(f"##### Sensor '{self.sensor_name}'")
 
-        with self.right:
-            st.button(
-                label="Restart video",
-                on_click=self._restart_videos(),
-                type="secondary"
-            )
-
-    def _restart_videos(self):
-        self.sensor.sensor.restart(sensor_name=self.sensor_name)
+    def restart_video(self):
+        self.player.restart()
 
     def render_frame(self) -> None:
         """Render the current frame to the image widget."""

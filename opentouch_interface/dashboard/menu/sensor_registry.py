@@ -1,14 +1,15 @@
 import base64
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Union
 
 import streamlit as st
-from omegaconf import OmegaConf
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.factory import ViewerFactory
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
-from opentouch_interface.interface.dataclasses.validator import Validator
+from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.validator import Validator
 from opentouch_interface.interface.dataclasses.viewer_group import ViewerGroup
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
 from opentouch_interface.interface.touch_sensor import TouchSensor
@@ -79,7 +80,7 @@ class SensorRegistry:
 
             group_name: str
             path = Optional[str]
-            sensors: List[Dict[str, Any]]
+            sensors: List[Union[DigitConfig, FileConfig]]
             payload: List[Dict[str, Any]]
 
             # The sensor is added manually via an input form
@@ -170,12 +171,12 @@ class SensorRegistry:
         #         )
 
     @staticmethod
-    def add_group(group_name: str, path: Optional[str], sensor_configs: List[Dict[str, Any]],
+    def add_group(group_name: str, path: Optional[str], sensor_configs: List[Union[DigitConfig, FileConfig]],
                   payload: List[Dict[str, Any]]):
 
         group_registry: GroupRegistry = st.session_state.group_registry
-        sensor_names: List[str] = [viewer.sensor.config.name for viewer in group_registry.get_all_viewers()]
-        new_sensor_names: List[str] = [sensor_config['sensor_name'] for sensor_config in sensor_configs]
+        sensor_names: List[str] = [viewer.sensor.config.sensor_name for viewer in group_registry.get_all_viewers()]
+        new_sensor_names: List[str] = [sensor_config.sensor_name for sensor_config in sensor_configs]
 
         # First, check if there are any non-unique sensor names
         duplicates: List[str] = [name for name in new_sensor_names if name in sensor_names]
@@ -185,35 +186,34 @@ class SensorRegistry:
                           f"registered in other groups!", icon="⚠️")
             return
 
-        try:
-            # For each sensor config, create a sensor
-            viewers: List[BaseImageViewer] = []
-            for sensor_config in sensor_configs:
-                config = OmegaConf.create(sensor_config)
+        # try:
+        # For each sensor config, create a sensor
+        viewers: List[BaseImageViewer] = []
 
-                sensor: TouchSensor = OpentouchInterface(config=config)
-                sensor.initialize()
-                sensor.connect()
-                sensor.calibrate()
+        for sensor_config in sensor_configs:
+            sensor: TouchSensor = OpentouchInterface(config=sensor_config)
+            sensor.initialize()
+            sensor.connect()
+            sensor.calibrate()
 
-                sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[config['sensor_type']]
-                viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
-                viewers.append(viewer)
+            sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[sensor_config.sensor_type]
+            viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
+            viewers.append(viewer)
 
-                # Create and save the group
-                group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
-                group_registry.add_group(group=group)
+            # Create and save the group
+            group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
+            group_registry.add_group(group=group)
 
-                # Output message
-                message = '\n'.join(
-                    f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
-                    for viewer in viewers)
+            # Output message
+            message = '\n'.join(
+                f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
+                for viewer in viewers)
 
-                st.success(
-                    body=f"The following sensors have been successfully added as part of the group '{group_name}': "
-                         f"{message}",
-                    icon="💡"
-                )
+            st.success(
+                body=f"The following sensors have been successfully added as part of the group '{group_name}': "
+                     f"{message}",
+                icon="💡"
+            )
 
-        except Exception as e:
-            st.error(body=e, icon="⚠️")
+        # except Exception as e:
+        #     st.error(body=e, icon="⚠️")

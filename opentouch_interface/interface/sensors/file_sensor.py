@@ -1,78 +1,27 @@
-import base64
 import threading
 import time
-from typing import Any, Union, Dict, List, Optional
-from io import BytesIO
+from typing import Any, Optional
 import cv2
 import warnings
-from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
-from opentouch_interface.interface.dataclasses.image.image_reader import ImageReader
+from opentouch_interface.interface.dataclasses.image.image_player import ImagePlayer
+from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from opentouch_interface.interface.dataclasses.image.image import Image
 
 
-class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=True):
-    """A configuration model for the File sensor."""
-
-    sensor_name: str
-    """The name of the sensor"""
-    sensor_type: str = Field(default="FILE", literal=True, description="Sensor type (must be 'FILE')")
-    """The type of the sensor, defaults to 'FILE'"""
-    path: Union[str, None] = None
-    """The file path for reading data, defaults to None"""
-    file: Union[str, BytesIO, None] = None
-    """The file-like object for reading data, defaults to None"""
-    frames: List[Any] = Field(default_factory=list)
-    """List to store frames, defaults to an empty list"""
-    current_frame_index: int = Field(default=0)
-    """Index of the current frame, defaults to 0"""
-    recording: bool = Field(default=False, literal=True, description="Whether the sensor is recording (must be false)")
-    """Whether the sensor is recording (must be false, as FileSensor can only replay data)"""
-    stream: Union[str, DataStream] = Field(DataStream.FRAME, description="Stream type (FRAME)")
-    '''The stream type, must be "FRAME", defaults to "FRAME"'''
-
-    @model_validator(mode='after')
-    def validate_model(self):
-        # Validate stream
-        if not isinstance(self.stream, DataStream):
-            if not isinstance(self.stream, str) or self.stream != "FRAME":
-                raise ValueError(f"Invalid stream '{self.stream}': Stream must be a str set to 'FRAME'")
-            self.stream: DataStream = DataStream.FRAME
-
-        # Validate path and file
-        path, file = self.path, self.file
-        if path is not None and file is not None:
-            raise ValueError('Either path or file must be provided, but not both.')
-        if path is None and file is None:
-            raise ValueError('Either path or file must be provided.')
-        if path and not path.endswith('.h5'):
-            raise ValueError(f"Invalid path '{path}': Path must be a .h5 file.")
-
-        # Convert file from base64 to BytesIO
-        if file and isinstance(file, str):
-            self.file = BytesIO(base64.b64decode(file))
-
-
 class FileSensor(TouchSensor):
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__(config=self._validate_and_update_config(config))
+    def __init__(self, config: FileConfig):
+        super().__init__(config=config)
         self.central_buffer: CentralBuffer = CentralBuffer()
-        self.reading_thread = None
-        self.stop_event = threading.Event()
 
-    @staticmethod
-    def _validate_and_update_config(config: Dict[str, Any]) -> FileConfig:
-        try:
-            return FileConfig(**config)
-        except ValidationError as e:
-            raise ValueError(f"Invalid configuration: {e}")
+        self.reading_thread: Optional[threading.Thread] = None
+        self.stop_event: threading.Event = threading.Event()
 
     def initialize(self) -> None:
-        self.sensor = ImageReader(file=self.config.file, path=self.config.path)
-        self.config.frames = self.sensor.get_all_frames()
+        self.sensor = ImagePlayer(frames=self.config.frames, fps=self.config.recording_frequency)
 
     def connect(self):
         # Start the reading thread
@@ -130,7 +79,7 @@ class FileSensor(TouchSensor):
             interval = 1.0 / self.sensor.fps
             while not self.stop_event.is_set():
                 start_time = time.time()
-                frame = self.sensor.get_next_frame()
+                frame = self.sensor.next_frame()
                 if frame:
                     self.central_buffer.put(frame)
                 elapsed_time = time.time() - start_time
