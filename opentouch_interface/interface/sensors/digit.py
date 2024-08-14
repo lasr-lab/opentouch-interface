@@ -1,7 +1,6 @@
 import threading
 import time
 from typing import Any, Dict, Optional, Union, List
-from datetime import datetime
 import warnings
 
 import cv2
@@ -25,10 +24,8 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
     '''The type of the sensor, defaults to "DIGIT"'''
     serial_id: str
     """The serial ID of the sensor"""
-    manufacturer: str = Field(default="")
+    manufacturer: str = Field(default="Not specified")
     """The manufacturer of the sensor, defaults to an empty string"""
-    path: Optional[str] = None
-    """The file path for saving data, defaults to None."""
     fps: int = Field(60, description="Frame rate (must be 30 or 60)")
     """The frame rate, must be either 30 or 60, defaults to 30."""
     intensity: int = Field(15, ge=0, le=15, description="Intensity level (0-15)")
@@ -37,8 +34,6 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
     """The resolution, either "VGA" or "QVGA", defaults to "QVGA"."""
     stream: Union[str, DataStream] = Field(DataStream.FRAME, description="Stream type (FRAME)")
     '''The stream type, must be "FRAME", defaults to "FRAME"'''
-    recording: bool = False
-    '''Flag to indicate if recording is active, defaults to False'''
     _calibration: Image = PrivateAttr(default=None)
     '''Private attribute to store the calibration image, defaults to None'''
     sampling_frequency: int = Field(30, description="Sampling frequency in Hz")
@@ -48,14 +43,6 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
 
     @model_validator(mode='after')
     def validate_model(self):
-        # Validate path
-        if self.path is None:
-            self.path = f"{self.sensor_type}-{self.sensor_name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
-        if not self.path.endswith('.h5'):
-            raise ValueError(f"Invalid path '{self.path}': Path must have a .h5 extension")
-        # if os.path.exists(self.path):
-        #     raise ValueError(f"File '{self.path}' already exists")
-        # TODO: Think about this
 
         # Validate fps
         if self.fps not in [30, 60]:
@@ -104,9 +91,6 @@ class DigitSensor(TouchSensor):
 
         # Start the reading thread
         self.start_reading()
-
-        if self.config.recording:
-            self.start_recording()  # Start recording if configured to do so
 
     def set(self, attr: SensorSettings, value: Any) -> Any:
         if not isinstance(attr, SensorSettings):
@@ -240,7 +224,7 @@ class DigitSensor(TouchSensor):
 
         def record_data():
             interval = 1.0 / self.config.recording_frequency
-            with ImageWriter(file_path=self.config.path, sensor_name=self.config.sensor_name,
+            with ImageWriter(file_path=self.path, sensor_name=self.config.sensor_name,
                              config=str(self._to_filtered_dict())) as recorder:
                 while not self.recording_event.is_set():
                     start_time = time.time()
@@ -254,7 +238,7 @@ class DigitSensor(TouchSensor):
 
         self.recording_thread = threading.Thread(target=record_data)
         self.recording_thread.start()
-        self.config.recording = True
+        self.recording = True
 
     def stop_recording(self):
         """Stop the ongoing recording."""
@@ -263,7 +247,7 @@ class DigitSensor(TouchSensor):
             self.recording_thread.join()
             self.recording_thread = None
 
-        self.config.recording = False
+        self.recording = False
 
     def _to_filtered_dict(self) -> Dict:
         """Returns a dictionary with specific attribute-value pairs."""

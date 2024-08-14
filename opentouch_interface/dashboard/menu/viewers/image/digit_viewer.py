@@ -46,7 +46,7 @@ class DigitViewer(BaseImageViewer):
                 options=self.streams_options,
                 on_change=self._update_resolution,
                 key=self.streams_key,
-                disabled=self.sensor.config.recording
+                disabled=self.sensor.recording
             )
 
             st.slider(
@@ -56,7 +56,7 @@ class DigitViewer(BaseImageViewer):
                 value=15,
                 on_change=self._update_fps,
                 key=self.brightness_key,
-                disabled=self.sensor.config.recording
+                disabled=self.sensor.recording
             )
 
     def _update_fps(self) -> None:

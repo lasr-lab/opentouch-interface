@@ -31,6 +31,9 @@ class TouchSensor(ABC):
         self.config = config
         self.sensor = None
 
+        self.path: str = ""
+        self.recording: bool = False
+
     @abstractmethod
     def initialize(self) -> None:
         """

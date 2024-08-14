@@ -6,14 +6,15 @@ from typing import List, Dict, Any, Optional, Union
 import h5py
 import streamlit as st
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from opentouch_interface.interface.sensors.digit import DigitConfig
+from opentouch_interface.interface.sensors.file_sensor import FileConfig
 
 
 class SliderConfig(BaseModel):
-    type: str = Field(default="slider", const=True)
+    type: str = Field(default="slider", Literal=True)
     """Type of the user input. Set to "slider" for slider."""
     label: str = Field(description='Description which will be displayed to the user. Should be unique.')
     """Description which will be displayed to the user. Should be unique."""
@@ -33,7 +34,7 @@ class SliderConfig(BaseModel):
 
 
 class TextInputConfig(BaseModel):
-    type: str = Field(default="text_input", const=True)
+    type: str = Field(default="text_input", Literal=True)
     """Type of the user input. Set to "text_input" for text input."""
     label: str = Field(description='Description which will be displayed to the user. Should be unique.')
     """Description which will be displayed to the user. Should be unique."""
@@ -42,44 +43,55 @@ class TextInputConfig(BaseModel):
     """Default value of the text input when first rendering, default to an empty string."""
 
 
-class PayloadConfig(BaseModel):
-    __root__: List[Union[SliderConfig, TextInputConfig]] = Field(default_factory=list, description='User input for '
-                                                                                                   'data annotation.')
-
-
-class GroupConfig(BaseModel):
-    group_name: str = Field(description='Name of the group. Should be unique.')
-    """Name of the group. Should be unique."""
-    path: Optional[str] = Field(default=None, description='Path to the hdf5 file.')
+class PathConfig(BaseModel):
+    path: str = Field(default=None, description='Path to the hdf5 file, defaults to <current-time>.h5')
     """Path to the hdf5 file."""
-    sensors: List[DigitConfig] = Field(default_factory=list, description='List of sensors.')
-    """List of sensors."""
-    payload: PayloadConfig = Field(default=PayloadConfig(), description='User input for data annotation.')
-    """User input for data annotation."""
+
+    @field_validator('path', mode='before', check_fields=False)
+    @classmethod
+    def set_default_path(cls, v):
+        if v is None:
+            # Access the group count from the session state
+            return f'group_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.h5'
+        return v
 
     @model_validator(mode='after')
     def validate_model(self):
 
         # Validate path
-        if self.path is None:
-            self.path = f"{self.sensor_type}-{self.sensor_name}-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
         if not self.path.endswith('.h5'):
             raise ValueError(f"Invalid path '{self.path}': Path must have a .h5 extension")
         if os.path.exists(self.path):
             raise ValueError(f"File '{self.path}' already exists")
 
 
-class ConfigModel(BaseModel):
-    group: List[GroupConfig]
+class GroupNameConfig(BaseModel):
+    group_name: str = Field(default=None, description='Group name, defaults to "Group <current-group-count>"')
+    """Group name."""
+
+    @field_validator('group_name', mode='before', check_fields=False)
+    @classmethod
+    def set_default_group_name(cls, v):
+        if v is None:
+            # Access the group count from the session state
+            return f'Group {st.session_state.group_registry.group_count()}'
+        return v
+
+    @model_validator(mode='after')
+    def validate_model(self):
+        # Make sure the group does not already exist
+        group_registry = st.session_state.group_registry
+        if any(group.group_name == self.group_name for group in group_registry.groups):
+            raise ValueError(f"Group '{self.group_name}' already exists")
+        return self
 
 
 class Validator:
     def __init__(self, file: UploadedFile):
         self.file: UploadedFile = file
 
-        # TODO: Check if validation still works now that the group yaml has no group attribute anymore
-        self.group_name: str = f'Group {st.session_state.group_registry.group_count()}'
-        self.path: Optional[str] = None
+        self.group_name: str = ""
+        self.path: str = ""
         self.sensors: List[Dict[str, Any]] = []
         self.payload: List[Dict[str, Any]] = []
 
@@ -91,31 +103,53 @@ class Validator:
             elif self.file.name.endswith(".h5"):
                 self._validate_h5()
 
-        # If using the dashboard, recording must be activated manually
-        for sensor in self.sensors:
-            sensor['recording'] = False
-
         return self.group_name, self.path, self.sensors, self.payload
 
     def _validate_yaml(self) -> None:
         """
         Validate YAML file input (are used when uploading config files)
         """
-        config: BaseModel = ConfigModel(**yaml.safe_load(StringIO(self.file.getvalue().decode("utf-8"))))
+        yaml_config: Dict[str, Union[str, List[Dict[str, Union[str, int]]]]] = yaml.safe_load(
+            StringIO(self.file.getvalue().decode("utf-8")))
 
-        # Check if the config file contains a group or just a single sensor
-        if 'group' in dict_config:
-            dict_config: List[Dict[str, Any]] = dict_config['group']
+        # Grab values from config
+        sensors: List[Dict[str, Union[str, int]]] = yaml_config.get('sensors', [])
+        payload = yaml_config.get('payload', [])
 
-            for item in dict_config:
-                if 'group_name' in item:
-                    self.group_name = item['group_name']
-                elif 'sensors' in item:
-                    self.sensors = item['sensors']
-                elif 'payload' in item:
-                    self.payload = item['payload']
-                elif 'path' in item:
-                    self.path = item['path']
+        # Validate group name and path
+        self.group_name = GroupNameConfig(group_name=yaml_config.get('group_name')).group_name
+        self.path = PathConfig(path=yaml_config.get('path')).path
+
+        # Validate sensors
+        if not sensors:
+            raise ValueError(f"Group must contain at least one sensor.")
+
+        for sensor_dict in sensors:
+            if 'sensor_type' in sensor_dict:
+                sensor_type = sensor_dict['sensor_type']
+                if sensor_type == 'DIGIT':
+                    self.sensors.append(DigitConfig(**sensor_dict).dict())
+                elif sensor_type == 'FILE':
+                    self.sensors.append(FileConfig(**sensor_dict).dict())
+                # Add more configs for other sensors here
+
+                else:
+                    raise ValueError(f"Invalid sensor type '{sensor_type}'")
+            else:
+                raise ValueError(f"Missing sensor type in sensors")
+
+        # Validate payload
+        for element_config in payload:
+            if 'type' in element_config:
+                element_type = element_config['type']
+                if element_type == 'slider':
+                    self.payload.append(SliderConfig(**element_config).dict())
+                elif element_type == 'text_input':
+                    self.payload.append(TextInputConfig(**element_config).dict())
+                else:
+                    raise ValueError(f"Invalid element type '{element_type}'")
+            else:
+                raise ValueError(f"Missing type in payload")
 
     def _validate_h5(self) -> None:
         """

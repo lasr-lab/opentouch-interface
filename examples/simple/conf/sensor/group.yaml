@@ -1,6 +1,6 @@
-- group_name: "My group"
-- path: "test.h5"                   # If not provided, a random file name is generated
-- sensors:
+group_name: "My group"
+path: "test.h5"                   # If not provided, a random file name is generated
+sensors:
   - sensor_type: "DIGIT"            # Sensor type. Use DIGIT here.
     sensor_name: "First Gripper"    # Name of the sensor (can be arbitrary)
     serial_id: "D20804"             # Serial ID of the Digit sensor
@@ -15,7 +15,7 @@
     recording_frequency: 30         # Frequency (Hz) at which data is recorded. Default is sampling_frequency. Can't be higher than sampling_frequency
 
 # Config for payload
-- payload:
+payload:
   - type: slider
     label: "Select the brightness"
     min_value: -10
