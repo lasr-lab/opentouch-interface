@@ -1,11 +1,11 @@
 import pprint
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 
-from pydantic import BaseModel
-
-from opentouch_interface.interface.dataclasses.image import Image
+from opentouch_interface.interface.dataclasses.image.image import Image
+from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 
 
@@ -22,14 +22,17 @@ class TouchSensor(ABC):
         GELSIGHT_MINI = "Gelsight Mini"
         FILE = "File"
 
-    def __init__(self, config: BaseModel):
+    def __init__(self, config: Union[DigitConfig, FileConfig]):
         """
         Initializes the touch sensor with a specific type.
 
         :param config: Config for that sensor
         """
-        self.config = config
+        self.config: Union[DigitConfig, FileConfig] = config
         self.sensor = None
+
+        self.path: str = ""
+        self.recording: bool = False
 
     @abstractmethod
     def initialize(self) -> None:
@@ -51,7 +54,7 @@ class TouchSensor(ABC):
         pass
 
     @abstractmethod
-    def calibrate(self, num_frames: int, skip_frames: int) -> Any:
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Any:
         """
         Calibrate the touch sensor.
 

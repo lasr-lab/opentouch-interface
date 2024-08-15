@@ -14,7 +14,7 @@ sampling_frequency: 30          # Frequency (Hz) at which the interface requests
 recording_frequency: 30         # Frequency (Hz) at which data is recorded. Default is sampling_frequency. Can't be higher than sampling_frequency
 
 # Config for payload
-elements:
+payload:
   - type: slider
     label: "Select the brightness"
     min_value: -10

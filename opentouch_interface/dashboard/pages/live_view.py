@@ -1,16 +1,13 @@
-from opentouch_interface.dashboard.menu.sensor_viewer import SensorViewer
+from opentouch_interface.dashboard.menu.group_registry_renderer import GroupRegistryRenderer
 
 import streamlit as st
 
-sensor_viewer = SensorViewer()
-sensor_viewer.select_group()
+group_registry_renderer = GroupRegistryRenderer()
 
-if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
+if st.session_state.group_registry.viewer_count() == 0:
     st.info(
         body="Once you've added new sensors through the 'Add Sensor' page, their live data will be displayed here.",
         icon="💡"
     )
 
-sensor_viewer.render_settings()
-sensor_viewer.render_payload()
-sensor_viewer.render_data()
+group_registry_renderer.render()

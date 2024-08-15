@@ -1,13 +1,16 @@
 import base64
-from io import StringIO
-from typing import Optional
+from typing import Optional, Dict, List, Any, Union
 
 import streamlit as st
-import yaml
-from omegaconf import DictConfig, OmegaConf
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.factory import ViewerFactory
+from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
+from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.validator import Validator
+from opentouch_interface.interface.dataclasses.viewer_group import ViewerGroup
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
 from opentouch_interface.interface.touch_sensor import TouchSensor
 
@@ -28,41 +31,38 @@ class SensorForm:
                  file: Optional[SensorAttribute] = None):
 
         self.sensor_type = sensor_type or SensorAttribute(None, True)
-        self.name = name or SensorAttribute(None, False)
+        self.sensor_name = name or SensorAttribute(None, False)
         self.serial = serial or SensorAttribute(None, False)
         self.path = path or SensorAttribute(None, False)
         self.file = file or SensorAttribute(None, False)
 
     def is_filled(self) -> bool:
-        fields = [self.name, self.serial, self.path]
+        fields = [self.sensor_name, self.serial, self.path]
         for field in fields:
             if field.required and field.value is None:
                 return False
         return True
 
-    def to_omc_config(self) -> DictConfig:
+    def to_dict(self) -> Dict[str, Any]:
         file_content = None
         if self.file is not None and self.file.value:
             file_content = base64.b64encode(self.file.value.getvalue()).decode('utf-8')
 
-        return OmegaConf.create({
+        return {
             "sensor_type": self.sensor_type.value,
-            "sensor_name": self.name.value if self.name is not None else None,
-            "serial_id": self.serial.value if self.serial is not None else None,
-            "path": self.path.value if self.path is not None else None,
+            "sensor_name": self.sensor_name.value if self.sensor_name is not None else "",
+            "serial_id": self.serial.value if self.serial is not None else "",
+            "path": self.path.value if self.path is not None else "",
             "file": file_content,
-        })
+        }
 
 
 class SensorRegistry:
     def __init__(self):
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
-            "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
-            "File": TouchSensor.SensorType.FILE
+            # "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
         }
-
-        self.from_type = {value: key for key, value in self.mapping.items()}
 
         self.container = st.container(border=False)
 
@@ -78,49 +78,49 @@ class SensorRegistry:
                 label_visibility="visible"
             )
 
-            if sensor_type is None:
-                config = st.file_uploader(
-                    label="Or choose sensor config",
-                    type=['yaml'],
-                    accept_multiple_files=False,
-                    label_visibility="collapsed"
-                )
-                if config is not None:
-                    dict_config = yaml.safe_load(StringIO(config.getvalue().decode("utf-8")))
+            group_name: str = ""
+            path: str = ""
+            sensors: List[Union[DigitConfig, FileConfig]] = []
+            payload: List[Dict[str, Any]] = []
 
-                    payload = None
-                    if 'elements' in dict_config:
-                        payload = dict_config['elements']
-                        del dict_config['elements']
-
-                    omc_config = OmegaConf.create(dict_config)
-
-                    # If using the dashboard, recording must be activated manually
-                    omc_config['recording'] = False
-
-                    self.add_sensor(sensor_type=TouchSensor.SensorType[omc_config['sensor_type']],
-                                    config=omc_config,
-                                    payload=payload)
-
-                    # Maybe remove sensor_type as it can be retrieved from the config
-
-            if sensor_type is not None:
-                selected_sensor = self.mapping[sensor_type]
-
+            # The sensor is added manually via an input form
             if sensor_type:
-                form = self.render_input_fields(sensor_type=selected_sensor)
+                selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
+                form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
+
+                group_name = form.sensor_name.value
+                path = form.path.value
+
+                if form.sensor_type.value == 'DIGIT':
+                    sensors = [DigitConfig(**form.to_dict())]
+
                 st.button(
                     label="Add sensor",
                     type="primary",
                     disabled=not form.is_filled(),
-                    on_click=self.add_sensor,
-                    args=(selected_sensor, form.to_omc_config())
+                    on_click=self.add_group,
+                    args=(group_name, path, sensors, payload)
                 )
 
-            if 'viewers' not in st.session_state or len(st.session_state.viewers) == 0:
+            # The sensor is added via a YAML or touch file
+            else:
+                file: UploadedFile = st.file_uploader(
+                    label="Or choose sensor config",
+                    type=['yaml', 'touch'],
+                    accept_multiple_files=False,
+                    label_visibility="collapsed"
+                )
+
+                if file:
+                    validator = Validator(file=file)
+                    group_name, path, sensors, payload = validator.validate()
+
+                    self.add_group(group_name=group_name, path=path, sensor_configs=sensors, payload=payload)
+
+            if st.session_state.group_registry.viewer_count() == 0:
                 st.info(
                     body="To add a new sensor to the 'Live View' page, you can either manually enter the sensor "
-                         "details or select a YAML file containing the sensor's configuration.",
+                         "details or select a YAML or .touch file containing the sensor's configuration.",
                     icon="💡"
                 )
 
@@ -142,7 +142,7 @@ class SensorRegistry:
                 sensor_path = st.text_input(
                     label="Where should Digit save it's data?",
                     value=None,
-                    placeholder="Path to example.h5 (optional)",
+                    placeholder="Path to example.touch (optional)",
                     label_visibility="collapsed"
                 )
             return SensorForm(
@@ -152,70 +152,70 @@ class SensorRegistry:
                 path=SensorAttribute(sensor_path, False)
             )
 
-        elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-            with self.container:
-                sensor_name = st.text_input(
-                    label="Name your file sensor",
-                    value=None,
-                    placeholder="Sensor name (e.g., Thumb)",
-                    label_visibility="collapsed"
-                )
-                sensor_path = st.text_input(
-                    label="Where is the .h5 file located?",
-                    value=None,
-                    placeholder="Path to example.h5 (optional)",
-                    label_visibility="collapsed"
-                )
-                return SensorForm(
-                    sensor_type=SensorAttribute(sensor_type.name, True),
-                    name=SensorAttribute(sensor_name, True),
-                    path=SensorAttribute(sensor_path, False)
-                )
+        # elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
+        #     with self.container:
+        #         sensor_name = st.text_input(
+        #             label="Name your file sensor",
+        #             value=None,
+        #             placeholder="Sensor name (e.g., Thumb)",
+        #             label_visibility="collapsed"
+        #         )
+        #         sensor_path = st.text_input(
+        #             label="Where is the .h5 file located?",
+        #             value=None,
+        #             placeholder="Path to example.h5 (optional)",
+        #             label_visibility="collapsed"
+        #         )
+        #         return SensorForm(
+        #             sensor_type=SensorAttribute(sensor_type.name, True),
+        #             name=SensorAttribute(sensor_name, True),
+        #             path=SensorAttribute(sensor_path, False)
+        #         )
 
-        elif sensor_type == TouchSensor.SensorType.FILE:
-            with self.container:
-                sensor_name = st.text_input(
-                    label="Name your file sensor",
-                    value=None,
-                    placeholder="Sensor name (e.g., Thumb)",
-                    label_visibility="collapsed"
-                )
+    @staticmethod
+    def add_group(group_name: str, path: Optional[str], sensor_configs: List[Union[DigitConfig, FileConfig]],
+                  payload: List[Dict[str, Any]]):
 
-                file = st.file_uploader(
-                    label="Upload your .h5 file",
-                    type=['h5'],
-                    accept_multiple_files=False,
-                    label_visibility="collapsed"
-                )
+        group_registry: GroupRegistry = st.session_state.group_registry
+        sensor_names: List[str] = [viewer.sensor.config.sensor_name for viewer in group_registry.get_all_viewers()]
+        new_sensor_names: List[str] = [sensor_config.sensor_name for sensor_config in sensor_configs]
 
-                return SensorForm(
-                    sensor_type=SensorAttribute(sensor_type.name, True),
-                    name=SensorAttribute(sensor_name, True),
-                    file=SensorAttribute(file, True)
-                )
+        # First, check if there are any non-unique sensor names
+        duplicates: List[str] = [name for name in new_sensor_names if name in sensor_names]
 
-    def add_sensor(self, sensor_type: TouchSensor.SensorType, config: DictConfig, payload: dict = None):
-        # If not already existent, create a list for viewers in session state
-        if 'viewers' not in st.session_state:
-            st.session_state.viewers = []
-
-        # Check if a sensor with that name already exists
-        if any(e.sensor.config.sensor_name == config.sensor_name for e in st.session_state.viewers):
-            st.error(body=f"Sensor named '{config.sensor_name}' already exists!", icon="⚠️")
+        if duplicates:
+            st.error(body=f"The sensor names {duplicates} are not unique either inside the group or are already "
+                          f"registered in other groups!", icon="⚠️")
             return
 
-        try:
-            sensor = OpentouchInterface(config=config)
+        # try:
+        # For each sensor config, create a sensor
+        viewers: List[BaseImageViewer] = []
+
+        for sensor_config in sensor_configs:
+            sensor: TouchSensor = OpentouchInterface(config=sensor_config)
             sensor.initialize()
             sensor.connect()
             sensor.calibrate()
 
-            # Create a viewer and add it to the session state
-            viewer = ViewerFactory(sensor, sensor_type, payload)
-            st.session_state.viewers.append(viewer)
+            sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[sensor_config.sensor_type]
+            viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
+            viewers.append(viewer)
+
+            # Create and save the group
+            group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
+            group_registry.add_group(group=group)
+
+            # Output message
+            message = '\n'.join(
+                f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
+                for viewer in viewers)
+
             st.success(
-                body=f"Sensor {config.sensor_name} ({self.from_type[sensor_type]}) has been successfully added!",
+                body=f"The following sensors have been successfully added as part of the group '{group_name}': "
+                     f"{message}",
                 icon="💡"
             )
-        except Exception as e:
-            st.error(body=e, icon="⚠️")
+
+        # except Exception as e:
+        #     st.error(body=e, icon="⚠️")

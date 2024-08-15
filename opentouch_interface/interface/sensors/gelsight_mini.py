@@ -6,7 +6,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from opentouch_interface.interface.dataclasses.image import ImageWriter, Image
+from opentouch_interface.interface.dataclasses.image.image import ImageWriter, Image
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 from gelsight import gsdevice

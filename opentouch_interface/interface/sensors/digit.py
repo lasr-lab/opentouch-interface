@@ -1,99 +1,35 @@
 import threading
 import time
-from typing import Any, Dict, Optional, Union
-from datetime import datetime
-import os
+from typing import Any, Dict, Optional, List
 import warnings
 
 import cv2
 import numpy as np
-from pydantic import BaseModel, Field, ValidationError, PrivateAttr, model_validator
 
 from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
+from opentouch_interface.interface.dataclasses.image.Image_writer import ImageWriter
+from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
-from opentouch_interface.interface.dataclasses.image import Image, ImageWriter
+from opentouch_interface.interface.dataclasses.image.image import Image
 from digit_interface.digit import Digit
-
-
-class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=True):
-    """A configuration model for the DIGIT sensor."""
-
-    sensor_name: str
-    """The name of the sensor"""
-    sensor_type: str = Field(default="DIGIT", literal=True, description="Sensor type (must be 'DIGIT')")
-    '''The type of the sensor, defaults to "DIGIT"'''
-    serial_id: str
-    """The serial ID of the sensor"""
-    manufacturer: str = Field(default="")
-    """The manufacturer of the sensor, defaults to an empty string"""
-    path: Optional[str] = None
-    """The file path for saving data, defaults to None."""
-    fps: int = Field(30, description="Frame rate (must be 30 or 60)")
-    """The frame rate, must be either 30 or 60, defaults to 30."""
-    intensity: int = Field(15, ge=0, le=15, description="Intensity level (0-15)")
-    """The intensity level, ranges from 0 to 15, defaults to 15."""
-    resolution: str = Field('QVGA', pattern='^(VGA|QVGA)$', description="Resolution (VGA or QVGA)")
-    """The resolution, either "VGA" or "QVGA", defaults to "QVGA"."""
-    stream: Union[str, DataStream] = Field(DataStream.FRAME, description="Stream type (FRAME)")
-    '''The stream type, must be "FRAME", defaults to "FRAME"'''
-    recording: bool = False
-    '''Flag to indicate if recording is active, defaults to False'''
-    _calibration: Image = PrivateAttr(default=None)
-    '''Private attribute to store the calibration image, defaults to None'''
-    sampling_frequency: int = Field(30, description="Sampling frequency in Hz")
-    '''The sampling frequency in Hz, defaults to 30Hz'''
-    recording_frequency: int = Field(sampling_frequency, description="Recording frequency in Hz")
-    '''The recording frequency in Hz, defaults to sampling_frequency (which by default is 30Hz)'''
-
-    @model_validator(mode='after')
-    def validate_model(self):
-        # Validate path
-        if self.path is None:
-            self.path = f"{self.sensor_type}-{self.sensor_name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.h5"
-        if not self.path.endswith('.h5'):
-            raise ValueError(f"Invalid path '{self.path}': Path must have a .h5 extension")
-        if os.path.exists(self.path):
-            raise ValueError(f"File '{self.path}' already exists")
-
-        # Validate fps
-        if self.fps not in [30, 60]:
-            raise ValueError(f"Invalid fps '{self.fps}': FPS must be either 30 or 60")
-
-        # Validate stream
-        if not isinstance(self.stream, DataStream):
-            if not isinstance(self.stream, str) or self.stream != "FRAME":
-                raise ValueError(f"Invalid stream '{self.stream}': Stream must be a str set to 'FRAME'")
-            self.stream: DataStream = DataStream.FRAME
-
-        # Validate fps and streams in conjunction
-        if (self.fps == 30 and self.resolution != "VGA") or (self.fps == 60 and self.resolution != "QVGA"):
-            raise ValueError(
-                f"Invalid fps and resolution combination: FPS of {self.fps} requires resolution "
-                f"'{'VGA' if self.fps == 30 else 'QVGA'}' but found '{self.resolution}' instead")
 
 
 class DigitSensor(TouchSensor):
 
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__(config=self._validate_and_update_config(config))
-        self.central_buffer = CentralBuffer()
-        self.reading_thread = None
-        self.recording_thread = None
-        self.stop_event = threading.Event()
-        self.recording_event = threading.Event()
+    def __init__(self, config: DigitConfig):
+        super().__init__(config=config)
+        self.central_buffer: CentralBuffer = CentralBuffer()
 
-    @staticmethod
-    def _validate_and_update_config(config: Dict[str, Any]) -> DigitConfig:
-        try:
-            return DigitConfig(**config)
-        except ValidationError as e:
-            raise ValueError(f"Invalid configuration: {e}")
+        self.reading_thread: Optional[threading.Thread] = None
+        self.recording_thread: Optional[threading.Thread] = None
+        self.stop_event: threading.Event = threading.Event()
+        self.recording_event: threading.Event = threading.Event()
 
     def initialize(self) -> None:
         self.sensor = Digit(serial=self.config.serial_id, name=self.config.sensor_name)
 
-    def connect(self):
+    def connect(self) -> None:
         self.sensor.connect()
         self.set(SensorSettings.RESOLUTION, self.config.resolution)
         self.set(SensorSettings.FPS, self.config.fps)
@@ -102,9 +38,6 @@ class DigitSensor(TouchSensor):
 
         # Start the reading thread
         self.start_reading()
-
-        if self.config.recording:
-            self.start_recording()  # Start recording if configured to do so
 
     def set(self, attr: SensorSettings, value: Any) -> Any:
         if not isinstance(attr, SensorSettings):
@@ -172,11 +105,11 @@ class DigitSensor(TouchSensor):
             warnings.warn(f"The provided attribute '{attr}' did not match any available attribute.",
                           stacklevel=2)
 
-    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Image | None:
-        interval = 1.0 / self.config.fps
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Optional[Image]:
+        interval: float = 1.0 / self.config.fps
 
         # Skip the initial frames
-        skipped = 0
+        skipped: int = 0
         while skipped < skip_frames:
             image = self.read(attr=DataStream.FRAME)
             if image is not None:
@@ -202,6 +135,7 @@ class DigitSensor(TouchSensor):
 
     def disconnect(self):
         self.stop_event.set()
+        self.recording_event.set()
         if self.reading_thread:
             self.reading_thread.join()
         if self.recording_thread:
@@ -218,7 +152,8 @@ class DigitSensor(TouchSensor):
                 try:
                     frame = self.sensor.get_frame()
                     if frame is not None:
-                        self.central_buffer.put(Image(image=frame, rotation=(0, 1, 2)))
+                        image = Image(image=frame, rotation=(0, 1, 2))
+                        self.central_buffer.put(image)
                 except Exception as e:
                     print(e)
                 elapsed_time = time.time() - start_time
@@ -236,13 +171,13 @@ class DigitSensor(TouchSensor):
 
         def record_data():
             interval = 1.0 / self.config.recording_frequency
-            with ImageWriter(file_path=self.config.path, sensor_name=self.config.sensor_name,
-                             config=self._to_filtered_dict()) as recorder:
-                while not self.stop_event.is_set():
+            with ImageWriter(file_path=self.path, sensor_name=self.config.sensor_name,
+                             config=str(self._to_filtered_dict())) as recorder:
+                while not self.recording_event.is_set():
                     start_time = time.time()
                     image = self.read(attr=DataStream.FRAME)
                     if image:
-                        recorder.save(image)
+                        recorder.save_to_buffer(image)
                     elapsed_time = time.time() - start_time
                     time_to_sleep = interval - elapsed_time
                     if time_to_sleep > 0:
@@ -250,21 +185,24 @@ class DigitSensor(TouchSensor):
 
         self.recording_thread = threading.Thread(target=record_data)
         self.recording_thread.start()
+        self.recording = True
 
     def stop_recording(self):
         """Stop the ongoing recording."""
         if self.recording_thread and self.recording_thread.is_alive():
-            self.stop_event.set()
+            self.recording_event.set()
             self.recording_thread.join()
             self.recording_thread = None
 
-    def _to_filtered_dict(self):
+        self.recording = False
+
+    def _to_filtered_dict(self) -> Dict:
         """Returns a dictionary with specific attribute-value pairs."""
-        include_keys = [
+        include_keys: List[str] = [
             'sensor_name', 'sensor_type', 'serial_id', 'manufacturer',
-            'fps', 'intensity', 'resolution', 'stream',
-            'sampling_frequency', 'recording_frequency'
+            'fps', 'intensity', 'resolution', 'sampling_frequency',
+            'recording_frequency'
         ]
-        data = self.config.dict()
-        filtered_data = {key: value for key, value in data.items() if key in include_keys}
+        data: Dict = self.config.dict()
+        filtered_data: Dict = {key: value for key, value in data.items() if key in include_keys}
         return filtered_data
