@@ -46,22 +46,21 @@ class TextInputConfig(BaseModel):
 
 
 class PathConfig(BaseModel):
-    path: str = Field(default=None, description='Path to the hdf5 file, defaults to <current-time>.h5')
+    path: str = Field(default=None, description='Path to the hdf5 file, defaults to <current-time>.touch')
     """Path to the hdf5 file."""
 
     @field_validator('path', mode='before', check_fields=False)
     def set_default_path(cls, v):
         if v is None:
             # Access the group count from the session state
-            return f'group_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.h5'
+            return f'group_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.touch'
         return v
 
     @model_validator(mode='after')
     def validate_model(self):
 
         # Validate path
-        if not self.path.endswith('.h5'):
-            raise ValueError(f"Invalid path '{self.path}': Path must have a .h5 extension")
+        self.path = f"{os.path.splitext(self.path)[0]}.touch"
         if os.path.exists(self.path):
             raise ValueError(f"File '{self.path}' already exists")
 
@@ -100,7 +99,7 @@ class Validator:
         if self.file:
             if self.file.name.endswith((".yaml", ".yml")):
                 self._validate_yaml()
-            elif self.file.name.endswith(".h5"):
+            elif self.file.name.endswith(".touch"):
                 self._validate_h5()
 
         return self.group_name, self.path, self.sensors, self.payload
@@ -151,7 +150,7 @@ class Validator:
 
     def _validate_h5(self) -> None:
         """
-        Validate h5 file input (are used when uploading recorded data)
+        Validate .touch file input (are used when uploading recorded data)
         """
 
         with h5py.File(self.file, 'r') as hf:
@@ -163,7 +162,7 @@ class Validator:
             if len(hf.keys()) == 0:
                 raise ValueError(f"File '{self.file}' does not contain any sensors")
 
-            # Extract attributes from h5 file
+            # Extract attributes from .touch file
 
             # Use GroupNameConfig here to make sure no group with the same group name is currently in use
             self.group_name = GroupNameConfig(group_name=hf.attrs['group_name']).group_name

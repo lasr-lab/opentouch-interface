@@ -1,4 +1,3 @@
-import os
 import threading
 import datetime
 from typing import Union, List, Self
@@ -42,7 +41,7 @@ class ImageWriter:
         with ImageWriter._file_lock:  # Ensure exclusive access
             with h5py.File(self.file_path, 'a') as hf:
 
-                # Save general metadata for that .h5 file
+                # Save general metadata for that .touch file
                 hf.attrs['last-edited'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 hf.attrs['version'] = 1
 

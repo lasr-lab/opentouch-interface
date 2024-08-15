@@ -31,13 +31,13 @@ class SensorForm:
                  file: Optional[SensorAttribute] = None):
 
         self.sensor_type = sensor_type or SensorAttribute(None, True)
-        self.name = name or SensorAttribute(None, False)
+        self.sensor_name = name or SensorAttribute(None, False)
         self.serial = serial or SensorAttribute(None, False)
         self.path = path or SensorAttribute(None, False)
         self.file = file or SensorAttribute(None, False)
 
     def is_filled(self) -> bool:
-        fields = [self.name, self.serial, self.path]
+        fields = [self.sensor_name, self.serial, self.path]
         for field in fields:
             if field.required and field.value is None:
                 return False
@@ -50,9 +50,9 @@ class SensorForm:
 
         return {
             "sensor_type": self.sensor_type.value,
-            "sensor_name": self.name.value if self.name is not None else None,
-            "serial_id": self.serial.value if self.serial is not None else None,
-            "path": self.path.value if self.path is not None else None,
+            "sensor_name": self.sensor_name.value if self.sensor_name is not None else "",
+            "serial_id": self.serial.value if self.serial is not None else "",
+            "path": self.path.value if self.path is not None else "",
             "file": file_content,
         }
 
@@ -78,19 +78,21 @@ class SensorRegistry:
                 label_visibility="visible"
             )
 
-            group_name: str
-            path = Optional[str]
-            sensors: List[Union[DigitConfig, FileConfig]]
-            payload: List[Dict[str, Any]]
+            group_name: str = ""
+            path: str = ""
+            sensors: List[Union[DigitConfig, FileConfig]] = []
+            payload: List[Dict[str, Any]] = []
 
             # The sensor is added manually via an input form
             if sensor_type:
                 selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
                 form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
 
-                group_name = form.name.value
+                group_name = form.sensor_name.value
                 path = form.path.value
-                sensors = [form.to_dict()]
+
+                if form.sensor_type.value == 'DIGIT':
+                    sensors = [DigitConfig(**form.to_dict())]
 
                 st.button(
                     label="Add sensor",
@@ -100,11 +102,11 @@ class SensorRegistry:
                     args=(group_name, path, sensors, payload)
                 )
 
-            # The sensor is added via a YAML or h5 file
+            # The sensor is added via a YAML or touch file
             else:
                 file: UploadedFile = st.file_uploader(
                     label="Or choose sensor config",
-                    type=['yaml', 'h5'],
+                    type=['yaml', 'touch'],
                     accept_multiple_files=False,
                     label_visibility="collapsed"
                 )
@@ -118,7 +120,7 @@ class SensorRegistry:
             if st.session_state.group_registry.viewer_count() == 0:
                 st.info(
                     body="To add a new sensor to the 'Live View' page, you can either manually enter the sensor "
-                         "details or select a YAML or h5 file containing the sensor's configuration.",
+                         "details or select a YAML or .touch file containing the sensor's configuration.",
                     icon="💡"
                 )
 
@@ -140,7 +142,7 @@ class SensorRegistry:
                 sensor_path = st.text_input(
                     label="Where should Digit save it's data?",
                     value=None,
-                    placeholder="Path to example.h5 (optional)",
+                    placeholder="Path to example.touch (optional)",
                     label_visibility="collapsed"
                 )
             return SensorForm(

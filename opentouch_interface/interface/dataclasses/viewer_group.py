@@ -159,7 +159,7 @@ class ViewerGroup:
                     path: Optional[str] = st.text_input(
                             label="Enter a file path",
                             value=self._path,
-                            placeholder="File name (must have .h5 extension)",
+                            placeholder="File name (must have .touch extension)",
                             label_visibility="collapsed",
                             disabled=self.is_recording
                         )
@@ -176,8 +176,8 @@ class ViewerGroup:
                             self.wrote_recording = False
 
                         # If the path does not already exist, use it as the new path
-                        if not path.endswith('.h5'):
-                            path = f'{path}.h5'
+                        if not path.endswith('.touch'):
+                            path = f'{path}.touch'
                         self.path = path
 
                 with right:
