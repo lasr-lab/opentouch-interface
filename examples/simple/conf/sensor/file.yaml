@@ -1,7 +1,0 @@
-# Mandatory
-sensor_type: "FILE"           # Sensor type. Use FILE here.
-sensor_name: "Image reader"   # Name of the sensor (can be arbitrary)
-path: "recordings.h5"          # File path where recorded data is read from. Must be a .h5 file.
-
-# Optional
-stream: "FRAME"               # Which data stream should be retrieved? Default is FRAME.

@@ -1,30 +1,11 @@
 # Mandatory
-sensor_type: "DIGIT"            # Sensor type. Use DIGIT here.
-sensor_name: "First Gripper"    # Name of the sensor (can be arbitrary)
-serial_id: "D20804"             # Serial ID of the Digit sensor
+sensor_type: "DIGIT"            # Use "DIGIT".
+sensor_name: "First Gripper"    # Sensor name (arbitrary).
+serial_id: "D20804"             # Sensor's serial ID.
 
 # Optional
-intensity: 15                   # Brightness of the LED lights. Integer in the range of 0 to 15. Default is 15.
-resolution: "QVGA"              # Resolution of the retrieved image. Can be either VGA or QVGA. Default is QVGA.
-fps: 60                         # Frame rate at which the sensor samples data. Can be either 30 or 60. Default is 60.
-stream: "FRAME"                 # Which data stream should be retrieved? Default is FRAME.
-recording: False                # Weather the data is recorded when calling show(). Can be either True or False. Default is False.
-path: "recordings.h5"            # File path where recorded data is written to. Must be a .h5 file. By default, a random name is generated.
-sampling_frequency: 30          # Frequency (Hz) at which the interface requests new data from the sensor. Default is 30.
-recording_frequency: 30         # Frequency (Hz) at which data is recorded. Default is sampling_frequency. Can't be higher than sampling_frequency
-
-# Config for payload
-payload:
-  - type: slider
-    label: "Select the brightness"
-    min_value: -10
-    max_value: 20
-    default: 8
-  - type: slider
-    label: "Happyness"
-    min_value: 0
-    max_value: 10
-    default: 0
-  - type: text_input
-    label: "Give me a name"
-    default: "I am already here"
+intensity: 15                   # LED brightness (0-15). Default: 15.
+resolution: "QVGA"              # Image resolution (VGA/QVGA). Default: QVGA.
+fps: 60                         # Frame rate (30/60). Default: 60.
+sampling_frequency: 30          # Data request rate (Hz). Default: 30.
+recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.

@@ -1,9 +1,0 @@
-type: "GELSIGHT_MINI"
-name: "First Gripper"   # Options: Choose arbitrary name
-serial_id: null         # Is automatically detected
-lighting: null          # Unavailable
-resolution: null        # Unavailable
-fps: null               # Unavailable
-stream: "FRAME"         # Options: FRAME
-recording: False        # Options: True, False
-path: "frames.h5"       # Enter path to file you want to write (must have .h5 ending)
