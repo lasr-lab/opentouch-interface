@@ -1,4 +1,3 @@
-import base64
 from typing import Optional, Dict, List, Any, Union
 
 import streamlit as st
@@ -17,7 +16,7 @@ from opentouch_interface.interface.touch_sensor import TouchSensor
 
 # Only used when entering the sensor config via input fields
 class SensorAttribute:
-    def __init__(self, value: Optional[str | UploadedFile], required: bool):
+    def __init__(self, value: Optional[str], required: bool):
         self.value = value
         self.required = required
 
@@ -27,34 +26,23 @@ class SensorForm:
                  sensor_type: Optional[SensorAttribute] = None,
                  name: Optional[SensorAttribute] = None,
                  serial: Optional[SensorAttribute] = None,
-                 path: Optional[SensorAttribute] = None,
-                 file: Optional[SensorAttribute] = None):
+                 path: Optional[SensorAttribute] = None):
 
-        self.sensor_type = sensor_type or SensorAttribute(None, True)
-        self.sensor_name = name or SensorAttribute(None, False)
-        self.serial = serial or SensorAttribute(None, False)
-        self.path = path or SensorAttribute(None, False)
-        self.file = file or SensorAttribute(None, False)
+        # Initialize attributes, only include those with non-None values
+        self.attributes: Dict[str, Optional[SensorAttribute]] = {
+            "sensor_type": sensor_type or SensorAttribute(None, True),
+            "sensor_name": name or SensorAttribute(None, False),
+            "serial_id": serial or SensorAttribute(None, False),
+            "path": path or SensorAttribute(None, False)
+        }
 
     def is_filled(self) -> bool:
-        fields = [self.sensor_name, self.serial, self.path]
-        for field in fields:
-            if field.required and field.value is None:
-                return False
-        return True
+        # Check if all required attributes have values
+        return all(attr.value is not None for attr in self.attributes.values() if attr.required)
 
-    def to_dict(self) -> Dict[str, Any]:
-        file_content = None
-        if self.file is not None and self.file.value:
-            file_content = base64.b64encode(self.file.value.getvalue()).decode('utf-8')
-
-        return {
-            "sensor_type": self.sensor_type.value,
-            "sensor_name": self.sensor_name.value if self.sensor_name is not None else "",
-            "serial_id": self.serial.value if self.serial is not None else "",
-            "path": self.path.value if self.path is not None else "",
-            "file": file_content,
-        }
+    def to_dict(self) -> Dict[str, str]:
+        # Convert attributes to a dictionary, only with non-None values
+        return {key: attr.value for key, attr in self.attributes.items()}
 
 
 class SensorRegistry:
@@ -78,28 +66,30 @@ class SensorRegistry:
                 label_visibility="visible"
             )
 
-            group_name: str = ""
-            path: str = ""
-            sensors: List[Union[DigitConfig, FileConfig]] = []
-            payload: List[Dict[str, Any]] = []
-
             # The sensor is added manually via an input form
             if sensor_type:
                 selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
                 form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
 
-                group_name = form.sensor_name.value
-                path = form.path.value
+                yaml_config: Optional[Dict[str, str]] = None
+                button_enabled: bool = False
+                if form.is_filled():
+                    yaml_config = {
+                        'group_name': form.to_dict()['sensor_name'],
+                        'path': form.to_dict()['path'],
+                        'sensors': [
+                            {**form.to_dict()}
+                        ],
+                        'payload': [],
+                    }
 
-                if form.sensor_type.value == 'DIGIT':
-                    sensors = [DigitConfig(**form.to_dict())]
+                    button_enabled = True
 
                 st.button(
                     label="Add sensor",
                     type="primary",
-                    disabled=not form.is_filled(),
-                    on_click=self.add_group,
-                    args=(group_name, path, sensors, payload)
+                    disabled=not button_enabled,
+                    on_click=lambda: self.add_group(yaml_config)
                 )
 
             # The sensor is added via a YAML or touch file
@@ -112,10 +102,7 @@ class SensorRegistry:
                 )
 
                 if file:
-                    validator = Validator(file=file)
-                    group_name, path, sensors, payload = validator.validate()
-
-                    self.add_group(group_name=group_name, path=path, sensor_configs=sensors, payload=payload)
+                    self.add_group(config=file)
 
             if st.session_state.group_registry.viewer_count() == 0:
                 st.info(
@@ -173,8 +160,14 @@ class SensorRegistry:
         #         )
 
     @staticmethod
-    def add_group(group_name: str, path: Optional[str], sensor_configs: List[Union[DigitConfig, FileConfig]],
-                  payload: List[Dict[str, Any]]):
+    def add_group(config: Union[UploadedFile, Dict[str, str]]):
+        group_name: str
+        path: Optional[str]
+        sensor_configs: List[Union[DigitConfig, FileConfig]]
+        payload: List[Dict[str, Any]]
+
+        validator = Validator(file=config)
+        group_name, path, sensor_configs, payload = validator.validate()
 
         group_registry: GroupRegistry = st.session_state.group_registry
         sensor_names: List[str] = [viewer.sensor.config.sensor_name for viewer in group_registry.get_all_viewers()]
@@ -188,34 +181,34 @@ class SensorRegistry:
                           f"registered in other groups!", icon="⚠️")
             return
 
-        # try:
-        # For each sensor config, create a sensor
-        viewers: List[BaseImageViewer] = []
+        try:
+            # For each sensor config, create a sensor
+            viewers: List[BaseImageViewer] = []
 
-        for sensor_config in sensor_configs:
-            sensor: TouchSensor = OpentouchInterface(config=sensor_config)
-            sensor.initialize()
-            sensor.connect()
-            sensor.calibrate()
+            for sensor_config in sensor_configs:
+                sensor: TouchSensor = OpentouchInterface(config=sensor_config)
+                sensor.initialize()
+                sensor.connect()
+                sensor.calibrate()
 
-            sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[sensor_config.sensor_type]
-            viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
-            viewers.append(viewer)
+                sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[sensor_config.sensor_type]
+                viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
+                viewers.append(viewer)
 
-            # Create and save the group
-            group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
-            group_registry.add_group(group=group)
+                # Create and save the group
+                group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
+                group_registry.add_group(group=group)
 
-            # Output message
-            message = '\n'.join(
-                f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
-                for viewer in viewers)
+                # Output message
+                message = '\n'.join(
+                    f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
+                    for viewer in viewers)
 
-            st.success(
-                body=f"The following sensors have been successfully added as part of the group '{group_name}': "
-                     f"{message}",
-                icon="💡"
-            )
+                st.success(
+                    body=f"The following sensors have been successfully added as part of the group '{group_name}': "
+                         f"{message}",
+                    icon="💡"
+                )
 
-        # except Exception as e:
-        #     st.error(body=e, icon="⚠️")
+        except Exception as e:
+            st.error(body=e, icon="⚠️")

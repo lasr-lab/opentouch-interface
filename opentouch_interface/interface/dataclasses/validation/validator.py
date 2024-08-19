@@ -86,8 +86,9 @@ class GroupNameConfig(BaseModel):
 
 
 class Validator:
-    def __init__(self, file: UploadedFile):
-        self.file: UploadedFile = file
+    def __init__(self, file: Union[UploadedFile, Dict]):
+        self.file: Optional[UploadedFile] = file if isinstance(file, UploadedFile) else None
+        self.yaml_config: Optional[Dict] = file if isinstance(file, Dict) else None
 
         self.group_name: str = ""
         self.path: str = ""
@@ -96,20 +97,35 @@ class Validator:
 
     def validate(self) -> (str, Optional[str], List[Union[DigitConfig, FileConfig]], List[Dict[str, Any]]):
 
+        # Validate an uploaded config
         if self.file:
             if self.file.name.endswith((".yaml", ".yml")):
                 self._validate_yaml()
             elif self.file.name.endswith(".touch"):
                 self._validate_h5()
 
+        # Validate manually created form
+        if self.yaml_config:
+            self._validate_yaml()
+
         return self.group_name, self.path, self.sensors, self.payload
 
     def _validate_yaml(self) -> None:
         """
-        Validate YAML file input (are used when uploading config files)
+        Validate YAML file input
         """
-        yaml_config: Dict[str, Union[str, List[Dict[str, Union[str, int]]]]] = yaml.safe_load(
-            StringIO(self.file.getvalue().decode("utf-8")))
+        # Uploaded YAML file
+        if self.file:
+            yaml_config: Dict[str, Union[str, List[Dict[str, Union[str, int]]]]] = yaml.safe_load(
+                StringIO(self.file.getvalue().decode("utf-8")))
+
+        # Manually created YAML file in the dashboard
+        elif self.yaml_config:
+            yaml_config = self.yaml_config
+
+        # Exit if no valid input was provided
+        else:
+            return
 
         # Grab values from config
         sensors: List[Dict[str, Union[str, int]]] = yaml_config.get('sensors', [])
