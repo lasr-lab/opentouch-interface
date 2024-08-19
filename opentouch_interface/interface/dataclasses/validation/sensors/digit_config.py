@@ -29,7 +29,7 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
     '''Private attribute to store the calibration image, defaults to None'''
     sampling_frequency: int = Field(30, description="Sampling frequency in Hz")
     '''The sampling frequency in Hz, defaults to 30Hz'''
-    recording_frequency: int = Field(sampling_frequency, description="Recording frequency in Hz")
+    recording_frequency: int = Field(0, description="Recording frequency in Hz")
     '''The recording frequency in Hz, defaults to sampling_frequency (which by default is 30Hz)'''
 
     @model_validator(mode='after')
@@ -50,3 +50,7 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
             raise ValueError(
                 f"Invalid fps and resolution combination: FPS of {self.fps} requires resolution "
                 f"'{'VGA' if self.fps == 30 else 'QVGA'}' but found '{self.resolution}' instead")
+
+        # Validate recording_frequency
+        if self.recording_frequency <= 0:
+            self.recording_frequency = self.sampling_frequency
