@@ -5,11 +5,12 @@ from io import StringIO
 from typing import List, Dict, Any, Optional, Union
 
 import h5py
-import streamlit as st
 import yaml
 from pydantic import BaseModel, Field, model_validator, field_validator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+import streamlit as st
 
+from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
 from opentouch_interface.interface.dataclasses.image.image import Image
 from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
 from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
@@ -65,21 +66,42 @@ class PathConfig(BaseModel):
             raise ValueError(f"File '{self.path}' already exists")
 
 
+class MockGroupRegistry:
+    def __init__(self):
+        self.groups = []
+        self._group_count = 0
+
+    @property
+    def group_count(self):
+        self._group_count += 1
+        return self._group_count
+
+
+class SessionStateManager:
+    def __init__(self):
+        self.state: Optional[GroupRegistry] = getattr(st.session_state, 'group_registry', None)
+
+    def get_group_registry(self) -> Union[GroupRegistry, MockGroupRegistry]:
+        if self.state:
+            return self.state
+        else:
+            return MockGroupRegistry()
+
+
 class GroupNameConfig(BaseModel):
     group_name: str = Field(default=None, description='Group name, defaults to "Group <current-group-count>"')
     """Group name."""
 
     @field_validator('group_name', mode='before', check_fields=False)
     def set_default_group_name(cls, v):
+        group_registry = SessionStateManager().get_group_registry()
         if v is None:
-            # Access the group count from the session state
-            return f'Group {st.session_state.group_registry.group_count()}'
+            return f'Group {group_registry.group_count}'
         return v
 
     @model_validator(mode='after')
     def validate_model(self):
-        # Make sure the group does not already exist
-        group_registry = st.session_state.group_registry
+        group_registry = SessionStateManager().get_group_registry()
         if any(group.group_name == self.group_name for group in group_registry.groups):
             raise ValueError(f"Group '{self.group_name}' already exists")
         return self
@@ -87,8 +109,8 @@ class GroupNameConfig(BaseModel):
 
 class Validator:
     def __init__(self, file: Union[UploadedFile, Dict]):
-        self.file: Optional[UploadedFile] = file if isinstance(file, UploadedFile) else None
-        self.yaml_config: Optional[Dict] = file if isinstance(file, Dict) else None
+        self._file: Optional[UploadedFile] = file if isinstance(file, UploadedFile) else None
+        self._yaml_config: Optional[Dict] = file if isinstance(file, Dict) else None
 
         self.group_name: str = ""
         self.path: str = ""
@@ -98,14 +120,14 @@ class Validator:
     def validate(self) -> (str, Optional[str], List[Union[DigitConfig, FileConfig]], List[Dict[str, Any]]):
 
         # Validate an uploaded config
-        if self.file:
-            if self.file.name.endswith((".yaml", ".yml")):
+        if self._file:
+            if self._file.name.endswith((".yaml", ".yml")):
                 self._validate_yaml()
-            elif self.file.name.endswith(".touch"):
+            elif self._file.name.endswith(".touch"):
                 self._validate_h5()
 
         # Validate manually created form
-        if self.yaml_config:
+        if self._yaml_config:
             self._validate_yaml()
 
         return self.group_name, self.path, self.sensors, self.payload
@@ -115,13 +137,17 @@ class Validator:
         Validate YAML file input
         """
         # Uploaded YAML file
-        if self.file:
+        if self._file:
             yaml_config: Dict[str, Union[str, List[Dict[str, Union[str, int]]]]] = yaml.safe_load(
-                StringIO(self.file.getvalue().decode("utf-8")))
+                StringIO(self._file.getvalue().decode("utf-8")))
 
         # Manually created YAML file in the dashboard
-        elif self.yaml_config:
-            yaml_config = self.yaml_config
+        elif self._yaml_config:
+            yaml_config = {
+                "sensors": [
+                    self._yaml_config['sensor']
+                ],
+            }
 
         # Exit if no valid input was provided
         else:
@@ -169,14 +195,16 @@ class Validator:
         Validate .touch file input (are used when uploading recorded data)
         """
 
-        with h5py.File(self.file, 'r') as hf:
+        with h5py.File(self._file, 'a') as hf:
             # Check if all attributes are available
             if 'group_name' not in hf.attrs:
-                raise ValueError(f"File '{self.file}' has no group name")
+                hf.attrs['group_name'] = 'Group 0'
+                print(f"WARNING: File '{self._file.name}' has no group name")
             if 'path' not in hf.attrs:
-                raise ValueError(f"File '{self.file}' does not specify a path")
+                hf.attrs['path'] = self._file.name
+                print(f"WARNING: File '{self._file.name}' does not specify a path")
             if len(hf.keys()) == 0:
-                raise ValueError(f"File '{self.file}' does not contain any sensors")
+                raise ValueError(f"File '{self._file}' does not contain any sensors")
 
             # Extract attributes from .touch file
 
