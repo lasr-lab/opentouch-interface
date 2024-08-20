@@ -14,6 +14,7 @@ class GroupRegistry:
 
         self.groups.append(group)
 
+    @property
     def group_count(self) -> int:
         return len(self.groups)
 
