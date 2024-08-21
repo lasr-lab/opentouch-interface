@@ -171,6 +171,9 @@ class DigitSensor(TouchSensor):
         if self.recording_thread and self.recording_thread.is_alive():
             return
 
+        # Clear the event to allow the new recording session to start
+        self.recording_event.clear()
+
         def record_data():
             interval = 1.0 / self.config.recording_frequency
             with ImageWriter(file_path=self.path, sensor_name=self.config.sensor_name,
