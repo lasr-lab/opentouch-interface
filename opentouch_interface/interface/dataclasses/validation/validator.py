@@ -99,12 +99,12 @@ class GroupNameConfig(BaseModel):
             return f'Group {group_registry.group_count}'
         return v
 
-    @model_validator(mode='after')
-    def validate_model(self):
-        group_registry = SessionStateManager().get_group_registry()
-        if any(group.group_name == self.group_name for group in group_registry.groups):
-            raise ValueError(f"Group '{self.group_name}' already exists")
-        return self
+    # @model_validator(mode='after')
+    # def validate_model(self):
+    #     group_registry = SessionStateManager().get_group_registry()
+    #     if any(group.group_name == self.group_name for group in group_registry.groups):
+    #         raise ValueError(f"Group '{self.group_name}' already exists")
+    #     return self
 
 
 class Validator:
@@ -143,11 +143,7 @@ class Validator:
 
         # Manually created YAML file in the dashboard
         elif self._yaml_config:
-            yaml_config = {
-                "sensors": [
-                    self._yaml_config['sensor']
-                ],
-            }
+            yaml_config = self._yaml_config
 
         # Exit if no valid input was provided
         else:

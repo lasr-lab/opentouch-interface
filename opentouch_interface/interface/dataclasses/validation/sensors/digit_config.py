@@ -1,12 +1,10 @@
 from typing import Union
-
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
-
 from opentouch_interface.interface.options import DataStream
 from opentouch_interface.interface.dataclasses.image.image import Image
 
 
-class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=True):
+class DigitConfig(BaseModel, arbitrary_types_allowed=True):
     """A configuration model for the DIGIT sensor."""
 
     sensor_name: str
@@ -45,7 +43,7 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
                 raise ValueError(f"Invalid stream '{self.stream}': Stream must be a str set to 'FRAME'")
             self.stream: DataStream = DataStream.FRAME
 
-        # Validate fps and streams in conjunction
+        # Validate fps and resolution in conjunction
         if (self.fps == 30 and self.resolution != "VGA") or (self.fps == 60 and self.resolution != "QVGA"):
             raise ValueError(
                 f"Invalid fps and resolution combination: FPS of {self.fps} requires resolution "
@@ -54,3 +52,21 @@ class DigitConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=T
         # Validate recording_frequency
         if self.recording_frequency <= 0:
             self.recording_frequency = self.sampling_frequency
+
+    def set_fps(self, fps: int):
+        """Set the FPS and implicitly set the resolution."""
+        if fps not in [30, 60]:
+            raise ValueError(f"Invalid fps '{fps}': FPS must be either 30 or 60")
+
+        # Implicitly set resolution based on FPS
+        self.resolution = "VGA" if fps == 30 else "QVGA"
+        self.fps = fps
+
+    def set_resolution(self, resolution: str):
+        """Set the resolution and implicitly set the FPS."""
+        if resolution not in ["VGA", "QVGA"]:
+            raise ValueError(f"Invalid resolution '{resolution}': Resolution must be either 'VGA' or 'QVGA'")
+
+        # Implicitly set FPS based on resolution
+        self.fps = 30 if resolution == "VGA" else 60
+        self.resolution = resolution

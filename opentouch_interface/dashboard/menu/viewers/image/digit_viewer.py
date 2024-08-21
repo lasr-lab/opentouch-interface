@@ -67,11 +67,10 @@ class DigitViewer(BaseImageViewer):
         self.streams_state = st.session_state[self.streams_key]
 
         # Parse selected resolution and FPS
-        resolution, fps = self.streams_state.split(", ")
-        fps = int(fps.split()[0])
+        # FPS don't need to be set as sensor.set() already sets frame rate accordingly to the respective resolution
+        resolution, _ = self.streams_state.split(", ")
 
         self.sensor.set(SensorSettings.RESOLUTION, value=resolution)
-        self.sensor.set(SensorSettings.FPS, value=fps)
 
     def render_frame(self) -> None:
         """Render the current frame to the image widget."""

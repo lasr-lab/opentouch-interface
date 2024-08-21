@@ -44,12 +44,14 @@ class DigitSensor(TouchSensor):
             raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead")
 
         if attr == SensorSettings.RESOLUTION:
-            self.config.resolution = value
-            self.sensor.set_resolution(Digit.STREAMS[value])
+            self.config.set_resolution(resolution=value)
+            self.sensor.set_fps(self.config.fps)
+            self.sensor.set_resolution(Digit.STREAMS[self.config.resolution])
 
         elif attr == SensorSettings.FPS:
-            self.config.fps = value
-            self.sensor.set_fps(value)
+            self.config.set_fps(fps=value)
+            self.sensor.set_fps(self.config.fps)
+            self.sensor.set_resolution(Digit.STREAMS[self.config.resolution])
 
         elif attr == SensorSettings.INTENSITY:
             self.config.intensity = value
