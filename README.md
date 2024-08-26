@@ -69,9 +69,12 @@ You can add sensors to the dashboard by:
 1. **Manual Entry**: Enter sensor details directly in the dashboard.
 2. **YAML Configuration**: Use a YAML config file to define sensor groups and settings.
 
-An example config file is provided as [`group.yaml`](examples/simple/conf/sensor/group.yaml). It is structured as follows:
+When using the dashboard, sensors are assigned to one group exactly.
+Therefore, **sensor names must be unique inside a group**.
+An example config file is provided as [`group.yaml`](examples/simple/conf/sensor/group.yaml).
+It is structured as follows:
 ```yaml
-group_name: "Robotic hand"  # Group name (arbitrary but unique).
+group_name: "Robotic hand"  # Group name.
 path: "test.touch"          # File path where data should be saved (optional).
 
 sensors:      # List of sensors belonging to that group
@@ -88,7 +91,7 @@ Currently, the following sensors with their respective config files are supporte
 ```yaml
 # Mandatory
 sensor_type: "DIGIT"            # Use "DIGIT".
-sensor_name: "First Gripper"    # Sensor name (arbitrary).
+sensor_name: "First Gripper"    # Sensor name (unique inside a group).
 serial_id: "D20804"             # Sensor's serial ID.
 
 # Optional

@@ -7,10 +7,12 @@ from opentouch_interface.interface.dataclasses.viewer_group import ViewerGroup
 class GroupRegistry:
     def __init__(self):
         self.groups: List[ViewerGroup] = []
+        self._running_group_count: int = 0
 
     def add_group(self, group: ViewerGroup) -> None:
-        if any(group.group_name == g.group_name for g in self.groups):
-            raise ValueError(f"Group with name {group.group_name} already registered")
+        # Tell group its index in global GroupRegistry
+        group.group_index = self._running_group_count + 1
+        self._running_group_count += 1
 
         self.groups.append(group)
 

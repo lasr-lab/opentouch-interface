@@ -1,3 +1,4 @@
+from opentouch_interface.dashboard.menu.util import UniqueKeyGenerator
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
@@ -9,8 +10,10 @@ class DigitViewer(BaseImageViewer):
     def __init__(self, sensor: TouchSensor):
         super().__init__(sensor=sensor)
 
-        self.streams_key: str = f"streams_{self.sensor_name}"
-        self.brightness_key: str = f"brightness_{self.sensor_name}"
+        key_generator: UniqueKeyGenerator = st.session_state.key_generator
+
+        self.streams_key: str = f"streams_{key_generator.get_key()}"
+        self.brightness_key: str = f"brightness_{key_generator.get_key()}"
         self.streams_options = ("QVGA, 60 FPS", "VGA, 30 FPS")
 
         # Keys to store state of select-boxes and sliders in session state
@@ -23,7 +26,7 @@ class DigitViewer(BaseImageViewer):
         """
 
         # Render heading with sensor name
-        self.title.markdown(f"##### Sensor '{self.sensor_name}'")
+        self.title.markdown(f"##### {self.sensor_name}")
 
         # Check if saved state already is in session state
         if self.brightness_state is None:

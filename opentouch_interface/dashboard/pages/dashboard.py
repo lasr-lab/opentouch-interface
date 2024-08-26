@@ -1,10 +1,14 @@
 import streamlit as st
 
+from opentouch_interface.dashboard.menu.util import UniqueKeyGenerator
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
 
 # Crete a GroupRegistry in session state
 if 'group_registry' not in st.session_state:
     st.session_state.group_registry = GroupRegistry()
+
+if 'key_generator' not in st.session_state:
+    st.session_state.key_generator = UniqueKeyGenerator()
 
 st.set_page_config(
     page_title="Opentouch Viewer",

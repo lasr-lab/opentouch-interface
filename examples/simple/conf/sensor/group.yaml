@@ -1,8 +1,8 @@
-group_name: "Robotic hand"  # Group name (arbitrary but unique).
+group_name: "Robotic hand"  # Group name.
 path: "test.touch"          # File path where data should be saved (optional).
 sensors:                    # List of sensors belonging to that group
   - sensor_type: "DIGIT"            # Use "DIGIT".
-    sensor_name: "First Gripper"    # Sensor name (arbitrary).
+    sensor_name: "First Gripper"    # Sensor name (unique inside a group).
     serial_id: "D20804"             # Sensor's serial ID.
 
     # Optional

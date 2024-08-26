@@ -74,11 +74,12 @@ class SensorRegistry:
                 yaml_config: Optional[Dict[str, str]] = None
                 button_enabled: bool = False
                 if form.is_filled():
+                    form_dict = form.to_dict()
                     yaml_config = {
-                        'group_name': form.to_dict()['sensor_name'],
-                        'path': form.to_dict()['path'],
+                        'group_name': form_dict['sensor_name'],
+                        'path': form_dict['path'],
                         'sensors': [
-                            {**form.to_dict()}
+                            {**form_dict}
                         ],
                         'payload': [],
                     }
@@ -166,22 +167,11 @@ class SensorRegistry:
         sensor_configs: List[Union[DigitConfig, FileConfig]]
         payload: List[Dict[str, Any]]
 
-        validator = Validator(file=config)
-        group_name, path, sensor_configs, payload = validator.validate()
-
-        group_registry: GroupRegistry = st.session_state.group_registry
-        sensor_names: List[str] = [viewer.sensor.config.sensor_name for viewer in group_registry.get_all_viewers()]
-        new_sensor_names: List[str] = [sensor_config.sensor_name for sensor_config in sensor_configs]
-
-        # First, check if there are any non-unique sensor names
-        duplicates: List[str] = [name for name in new_sensor_names if name in sensor_names]
-
-        if duplicates:
-            st.error(body=f"The sensor names {duplicates} are not unique either inside the group or are already "
-                          f"registered in other groups!", icon="⚠️")
-            return
-
         try:
+            validator = Validator(file=config)
+            group_name, path, sensor_configs, payload = validator.validate()
+            group_registry: GroupRegistry = st.session_state.group_registry
+
             # For each sensor config, create a sensor
             viewers: List[BaseImageViewer] = []
 
@@ -195,20 +185,20 @@ class SensorRegistry:
                 viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
                 viewers.append(viewer)
 
-                # Create and save the group
-                group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
-                group_registry.add_group(group=group)
+            # Create and save the group
+            group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
+            group_registry.add_group(group=group)
 
-                # Output message
-                message = '\n'.join(
-                    f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
-                    for viewer in viewers)
+            # Output message
+            message = '\n'.join(
+                f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
+                for viewer in viewers)
 
-                st.success(
-                    body=f"The following sensors have been successfully added as part of the group '{group_name}': "
-                         f"{message}",
-                    icon="💡"
-                )
+            st.success(
+                body=f"The following sensors have been successfully added as part of the group '{group_name}': "
+                     f"{message}",
+                icon="💡"
+            )
 
         except Exception as e:
             st.error(body=e, icon="⚠️")

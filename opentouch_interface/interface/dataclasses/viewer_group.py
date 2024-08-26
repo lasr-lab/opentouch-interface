@@ -16,12 +16,15 @@ class ViewerGroup:
                  payload: List[Dict[str, Any]]):
         self.group_name: str = group_name
         self._path: Optional[str] = path
-        self.viewers: List[BaseImageViewer] = [] if viewers is None else viewers
+        self.viewers: List[BaseImageViewer] = viewers or []
         self.payload: List[Dict[str, Any]] = payload
 
         self.has_file_sensors: bool = any(viewer.sensor.config.sensor_type == 'FILE' for viewer in self.viewers)
 
         self.is_recording: bool = False
+
+        # The index this group has in the global GroupRegistry. Used to distinguish equally named groups.
+        self.group_index: int = -1
 
         # If the viewer group has file sensors, the user should be allowed to change the payload
         self.wrote_recording: bool = self.has_file_sensors
@@ -214,7 +217,7 @@ class ViewerGroup:
                     )
 
     def render_static(self) -> None:
-        st.markdown(f'### Group {self.group_name}')
+        st.markdown(f'### {self.group_name} (#{self.group_index})')
 
         self._update_stuff()
         self._render_settings()

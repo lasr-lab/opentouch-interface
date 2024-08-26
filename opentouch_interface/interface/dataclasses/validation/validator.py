@@ -99,13 +99,6 @@ class GroupNameConfig(BaseModel):
             return f'Group {group_registry.group_count}'
         return v
 
-    # @model_validator(mode='after')
-    # def validate_model(self):
-    #     group_registry = SessionStateManager().get_group_registry()
-    #     if any(group.group_name == self.group_name for group in group_registry.groups):
-    #         raise ValueError(f"Group '{self.group_name}' already exists")
-    #     return self
-
 
 class Validator:
     def __init__(self, file: Union[UploadedFile, Dict]):
@@ -161,6 +154,9 @@ class Validator:
         if not sensors:
             raise ValueError(f"Group must contain at least one sensor.")
 
+        if len(sensors) != len({sensor["sensor_name"] for sensor in sensors}):
+            raise ValueError(f"Sensor names should be unique inside a group.")
+
         for sensor_dict in sensors:
             if 'sensor_type' in sensor_dict:
                 sensor_type = sensor_dict['sensor_type']
@@ -195,6 +191,10 @@ class Validator:
             # Check if all attributes are available
             if 'group_name' not in hf.attrs:
                 hf.attrs['group_name'] = 'Group 0'
+
+                # .touch files missing a group name as well as a path is normal for files being recorded within code
+                # That is because code does not support groups while 'group_name' and 'path' are both attributes that
+                # belong to groups
                 print(f"WARNING: File '{self._file.name}' has no group name")
             if 'path' not in hf.attrs:
                 hf.attrs['path'] = self._file.name
