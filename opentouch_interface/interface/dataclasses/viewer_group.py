@@ -5,10 +5,10 @@ from typing import List, Dict, Any, Optional
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 
-from opentouch_interface.dashboard.menu.util import get_clean_rendering_container
+from opentouch_interface.dashboard.util.util import get_clean_rendering_container
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.image.file_viewer import FileViewer
-from opentouch_interface.interface.dataclasses.image.Image_writer import ImageWriter
+from opentouch_interface.interface.dataclasses.image.image_writer import ImageWriter
 
 
 class ViewerGroup:

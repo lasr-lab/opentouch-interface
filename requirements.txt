@@ -10,6 +10,4 @@ packaging~=24.1
 decorator~=5.1.1
 setuptools~=68.2.0
 pydantic~=2.8.2
-
-opencv-python~=4.10.0.84 # Temporary
-# gelsight~=4.0
+opencv-python~=4.10.0.84

@@ -14,6 +14,8 @@ from opentouch_interface.interface.dataclasses.group_registry import GroupRegist
 from opentouch_interface.interface.dataclasses.image.image import Image
 from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
 from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.gelsight_config import GelsightConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.sensor_config import SensorConfig
 
 
 class SliderConfig(BaseModel):
@@ -107,10 +109,10 @@ class Validator:
 
         self.group_name: str = ""
         self.path: str = ""
-        self.sensors: List[Union[DigitConfig, FileConfig]] = []
+        self.sensors: List[SensorConfig] = []
         self.payload: List[Dict[str, Any]] = []
 
-    def validate(self) -> (str, Optional[str], List[Union[DigitConfig, FileConfig]], List[Dict[str, Any]]):
+    def validate(self) -> (str, Optional[str], List[SensorConfig], List[Dict[str, Any]]):
 
         # Validate an uploaded config
         if self._file:
@@ -162,6 +164,9 @@ class Validator:
                 sensor_type = sensor_dict['sensor_type']
                 if sensor_type == 'DIGIT':
                     self.sensors.append(DigitConfig(**sensor_dict))
+                elif sensor_type == 'GELSIGHT_MINI':
+                    self.sensors.append(GelsightConfig(**sensor_dict))
+
                 # Add more configs for other sensors here
 
                 else:

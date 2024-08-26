@@ -49,7 +49,7 @@ class SensorRegistry:
     def __init__(self):
         self.mapping = {
             "Digit": TouchSensor.SensorType.DIGIT,
-            # "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
+            "Gelsight Mini": TouchSensor.SensorType.GELSIGHT_MINI,
         }
 
         self.container = st.container(border=False)
@@ -128,7 +128,7 @@ class SensorRegistry:
                     label_visibility="collapsed"
                 )
                 sensor_path = st.text_input(
-                    label="Where should Digit save it's data?",
+                    label="Where should Digit save its data?",
                     value=None,
                     placeholder="Path to example.touch (optional)",
                     label_visibility="collapsed"
@@ -140,25 +140,25 @@ class SensorRegistry:
                 path=SensorAttribute(sensor_path, False)
             )
 
-        # elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-        #     with self.container:
-        #         sensor_name = st.text_input(
-        #             label="Name your file sensor",
-        #             value=None,
-        #             placeholder="Sensor name (e.g., Thumb)",
-        #             label_visibility="collapsed"
-        #         )
-        #         sensor_path = st.text_input(
-        #             label="Where is the .h5 file located?",
-        #             value=None,
-        #             placeholder="Path to example.h5 (optional)",
-        #             label_visibility="collapsed"
-        #         )
-        #         return SensorForm(
-        #             sensor_type=SensorAttribute(sensor_type.name, True),
-        #             name=SensorAttribute(sensor_name, True),
-        #             path=SensorAttribute(sensor_path, False)
-        #         )
+        elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
+            with self.container:
+                sensor_name = st.text_input(
+                    label="Enter GelsightMini's name",
+                    value=None,
+                    placeholder="Sensor name (e.g., Thumb)",
+                    label_visibility="collapsed"
+                )
+                sensor_path = st.text_input(
+                    label="Where should GelsightMini save its data?",
+                    value=None,
+                    placeholder="Path to example.touch (optional)",
+                    label_visibility="collapsed"
+                )
+                return SensorForm(
+                    sensor_type=SensorAttribute(sensor_type.name, True),
+                    name=SensorAttribute(sensor_name, True),
+                    path=SensorAttribute(sensor_path, False)
+                )
 
     @staticmethod
     def add_group(config: Union[UploadedFile, Dict[str, str]]):
@@ -181,8 +181,7 @@ class SensorRegistry:
                 sensor.connect()
                 sensor.calibrate()
 
-                sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[sensor_config.sensor_type]
-                viewer: BaseImageViewer = ViewerFactory(sensor, sensor_type)
+                viewer: BaseImageViewer = ViewerFactory(sensor)
                 viewers.append(viewer)
 
             # Create and save the group

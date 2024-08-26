@@ -1,6 +1,6 @@
 import streamlit as st
 
-from opentouch_interface.dashboard.menu.util import UniqueKeyGenerator
+from opentouch_interface.dashboard.util.key_generator import UniqueKeyGenerator
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
 
 # Crete a GroupRegistry in session state
