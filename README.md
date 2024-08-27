@@ -37,7 +37,7 @@ Additionally, depending on the specific sensors you are using, make sure you hav
 pip install digit-interface
 ```
 
-- ### ~~GelSight Mini~~
+- ### GelSight Mini
 
 ```bash
 pip install gelsight@git+https://github.com/gelsightinc/gsrobotics
