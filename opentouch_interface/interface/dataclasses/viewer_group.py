@@ -1,14 +1,12 @@
 import os
-import random
 from typing import List, Dict, Any, Optional
 
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 
-from opentouch_interface.dashboard.menu.util import get_clean_rendering_container
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.image.file_viewer import FileViewer
-from opentouch_interface.interface.dataclasses.image.Image_writer import ImageWriter
+from opentouch_interface.interface.dataclasses.image.image_writer import ImageWriter
 
 
 class ViewerGroup:
@@ -29,6 +27,9 @@ class ViewerGroup:
         # If the viewer group has file sensors, the user should be allowed to change the payload
         self.wrote_recording: bool = self.has_file_sensors
         self.container: DeltaGenerator = st.container()
+
+        # Weather group will be shown by the GroupRegistry
+        self.hidden: bool = False
 
     @property
     def path(self) -> str:
@@ -63,9 +64,9 @@ class ViewerGroup:
 
         self.is_recording = not self.is_recording
 
-    def _update_stuff(self) -> None:
-        # self.container = st.container()
-        self.container = get_clean_rendering_container().container()
+    def _update_stuff(self, clean_container: DeltaGenerator) -> None:
+        self.container = clean_container
+        self.container.markdown(f'### {self.group_name} (#{self.group_index})')
         self.container.markdown('###### Sensors')
         for viewer in self.viewers:
             viewer.update_container(container=self.container)
@@ -91,11 +92,10 @@ class ViewerGroup:
                     )
                     return
 
-                for element in self.payload:
+                for index, element in enumerate(self.payload):
                     element_type = element['type']
 
-                    if "key" not in element:
-                        element["key"] = random.random()
+                    element_key = f'{self.group_index}_{self.group_index}_payload{index}'
 
                     if element_type == "slider":
                         st.slider(
@@ -105,7 +105,7 @@ class ViewerGroup:
                             value=element.get("default", 0),
                             step=1,
                             label_visibility="visible",
-                            key=element["key"],
+                            key=element_key,
                         )
 
                     elif element_type == "text_input":
@@ -113,7 +113,7 @@ class ViewerGroup:
                             label=element.get("label", "Some text input"),
                             value=element.get("default", ""),
                             label_visibility="visible",
-                            key=element["key"],
+                            key=element_key,
                         )
 
                 st.button(
@@ -122,15 +122,15 @@ class ViewerGroup:
                     # Saving of payload only allowed when (1) the file exists and (2) it was written
                     disabled=not (self._path and os.path.exists(self._path) and self.wrote_recording),
                     on_click=self._persist_payload,
+                    key=f'{self.group_name}_{self.group_index}_save_changes_key'
                 )
 
     def _persist_payload(self) -> None:
-        # Update payload
-        for element in self.payload:
-            key = element["key"]
 
-            if key in st.session_state:
-                element["current_value"] = st.session_state[key]
+        # Update payload
+        for index, element in enumerate(self.payload):
+            element_key = f'{self.group_index}_{self.group_index}_payload{index}'
+            element["default"] = st.session_state[element_key]
 
         # Save payload to disk
         ImageWriter.write_attr(file_path=self._path, attribute='payload', value=str(self.payload))
@@ -164,8 +164,9 @@ class ViewerGroup:
                             value=self._path,
                             placeholder="File name (must have .touch extension)",
                             label_visibility="collapsed",
-                            disabled=self.is_recording
-                        )
+                            disabled=self.is_recording,
+                            key=f'{self.group_name}_{self.group_index}_path_key'
+                    )
 
                     # Check if the entered path is valid
                     if path is not None:
@@ -191,7 +192,8 @@ class ViewerGroup:
                         disabled=not (self._path and not os.path.exists(self._path)),
                         use_container_width=True,
                         on_click=self._toggle_recording,
-                        args=()
+                        args=(),
+                        key=f'{self.group_name}_{self.group_index}_recording_key'
                     )
 
     def _render_video_control(self):
@@ -216,14 +218,38 @@ class ViewerGroup:
                         args=()
                     )
 
-    def render_static(self) -> None:
-        st.markdown(f'### {self.group_name} (#{self.group_index})')
+    def _unload_group(self):
 
-        self._update_stuff()
+        def disconnect():
+            # Disconnect sensors
+            for viewer in self.viewers:
+                viewer.sensor.disconnect()
+
+            # Mark self as hidden
+            self.hidden = True
+
+        self.container.markdown('###### Remove group')
+        with self.container:
+            unload_group_container = self.container.container(border=True)
+
+            with unload_group_container:
+                st.button(
+                    label="Remove Group",
+                    type="primary",
+                    disabled=False,
+                    use_container_width=True,
+                    on_click=disconnect,
+                    args=(),
+                    key=f'{self.group_name}_{self.group_index}_remove_group_key'
+                )
+
+    def render_static(self, clean_container: DeltaGenerator) -> None:
+        self._update_stuff(clean_container=clean_container)
         self._render_settings()
         self._render_video_control()
         self._render_recording_control()
         self._render_payload()
+        self._unload_group()
 
     def render_dynamic(self) -> None:
         self._render_data()

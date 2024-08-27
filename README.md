@@ -11,7 +11,7 @@ We also provide an easy-to-use web interface that lets you connect to the sensor
 
 We currently offer a unified API along with a simple web interface for the following touch sensors:
 - [Digit](https://digit.ml/)
-- ~~[GelSight Mini](https://www.gelsight.com/gelsightmini/) (not working right now)~~
+- [GelSight Mini](https://www.gelsight.com/gelsightmini/)
 
 Key features include:
 
@@ -37,10 +37,10 @@ Additionally, depending on the specific sensors you are using, make sure you hav
 pip install digit-interface
 ```
 
-- ### ~~GelSight Mini~~
+- ### GelSight Mini
 
 ```bash
-pip install git+ssh://git@github.com/gelsightinc/gsrobotics.git
+pip install gelsight@git+https://github.com/gelsightinc/gsrobotics
 ```
 
 ## Connecting Sensors
@@ -98,6 +98,17 @@ serial_id: "D20804"             # Sensor's serial ID.
 intensity: 15                   # LED brightness (0-15). Default: 15.
 resolution: "QVGA"              # Image resolution (VGA/QVGA). Default: QVGA.
 fps: 60                         # Frame rate (30/60). Default: 60.
+sampling_frequency: 30          # Data request rate (Hz). Default: 30.
+recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
+```
+
+- **GelSight Mini**
+```yaml
+# Mandatory
+sensor_type: "GELSIGHT_MINI"    # Use "GELSIGHT_MINI".
+sensor_name: "Second Gripper"   # Sensor name (arbitrary).
+
+# Optional
 sampling_frequency: 30          # Data request rate (Hz). Default: 30.
 recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
 ```

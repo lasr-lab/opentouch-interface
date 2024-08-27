@@ -1,5 +1,5 @@
-from opentouch_interface.dashboard.menu.util import UniqueKeyGenerator
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
+from opentouch_interface.dashboard.util.key_generator import UniqueKeyGenerator
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
 

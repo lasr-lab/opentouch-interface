@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
-from opentouch_interface.interface.dataclasses.image.Image_writer import ImageWriter
+from opentouch_interface.interface.dataclasses.image.image_writer import ImageWriter
 from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
@@ -78,7 +78,7 @@ class DigitSensor(TouchSensor):
             raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead")
         return getattr(self.config, attr.name.lower(), None)
 
-    def read(self, attr: DataStream, value: Any = None) -> Image | None:
+    def read(self, attr: DataStream, value: Any = None) -> Optional[Image]:
         if not isinstance(attr, DataStream):
             raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead")
 

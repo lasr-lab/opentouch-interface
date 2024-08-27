@@ -1,11 +1,10 @@
 import pprint
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Union
+from typing import Any
 
 from opentouch_interface.interface.dataclasses.image.image import Image
-from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
-from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.sensor_config import SensorConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 
 
@@ -22,13 +21,13 @@ class TouchSensor(ABC):
         GELSIGHT_MINI = "Gelsight Mini"
         FILE = "File"
 
-    def __init__(self, config: Union[DigitConfig, FileConfig]):
+    def __init__(self, config: SensorConfig):
         """
         Initializes the touch sensor with a specific type.
 
         :param config: Config for that sensor
         """
-        self.config: Union[DigitConfig, FileConfig] = config
+        self.config: SensorConfig = config
         self.sensor = None
 
         self.path: str = ""

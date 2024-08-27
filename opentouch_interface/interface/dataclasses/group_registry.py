@@ -28,3 +28,8 @@ class GroupRegistry:
         for group in self.groups:
             viewers.extend(group.viewers)
         return viewers
+
+    def remove_hidden_groups(self):
+        for group in self.groups:
+            if group.hidden:
+                self.groups.remove(group)

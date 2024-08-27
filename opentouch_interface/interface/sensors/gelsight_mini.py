@@ -1,129 +1,219 @@
-import pprint
+import threading
 import time
 import warnings
-from typing import Any
+from typing import Any, Optional, Dict, List
 
 import cv2
 import numpy as np
+from gelsight.gsdevice import Camera
 
-from opentouch_interface.interface.dataclasses.image.image import ImageWriter, Image
+from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
+from opentouch_interface.interface.dataclasses.image.image import Image
+from opentouch_interface.interface.dataclasses.image.image_writer import ImageWriter
+from opentouch_interface.interface.dataclasses.validation.sensors.gelsight_config import GelsightConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
-from gelsight import gsdevice
+
+
+# class GelsightMiniCamera:
+#     def __init__(self):
+#         self._dev_id: Optional[int] = None
+#         self._camera: Optional[cv2.VideoCapture] = None
+#
+#     def connect(self) -> None:
+#         for file in os.listdir("/sys/class/video4linux"):
+#             real_file = os.path.join("/sys/class/video4linux", file, "name")
+#             with open(real_file, "rt") as name_file:
+#                 name = name_file.read().strip()
+#
+#             if 'GelSight Mini' in name:
+#                 self._dev_id = int(re.search(r"\d+$", file).group())
+#
+#         self._camera = cv2.VideoCapture(self._dev_id)
+#         if not self._camera or not self._camera.isOpened():
+#             warnings.warn("Failed to open GelSight Mini camera device")
+#
+#     def get_image(self) -> Optional[np.ndarray]:
+#         if self._camera:
+#             ret, frame = self._camera.read()
+#             if ret and frame is not None:
+#                 # Remove 1/7th of the border from each side
+#                 border_size_x = int(frame.shape[0] * (1 / 7))
+#                 border_size_y = int(frame.shape[1] * (1 / 7))
+#
+#                 # Crop the image
+#                 cropped_frame = frame[border_size_x + 2:frame.shape[0] - border_size_x, border_size_y:frame.shape[1]
+#                                                                                                       - border_size_y]
+#
+#                 # Resize the image to 320x240
+#                 resized_frame = cv2.resize(cropped_frame, (320, 240))
+#
+#                 return resized_frame
+#         return None
+#
+#     def disconnect(self):
+#         self._camera.release()
 
 
 class GelsightMiniSensor(TouchSensor):
-    def __init__(self):
-        super().__init__(TouchSensor.SensorType.GELSIGHT_MINI)
 
-    def initialize(self, name: str, serial: None, path: str) -> None:
-        if serial is not None:
-            raise ValueError("GelSight Mini does not expect a serial ID")
+    def __init__(self, config: GelsightConfig):
+        super().__init__(config=config)
+        self.central_buffer: CentralBuffer = CentralBuffer()
 
-        self.settings[SensorSettings.SENSOR_NAME] = name
-        self.settings[SensorSettings.SERIAL_ID] = "Gelsight Mini"
-        self.settings[SensorSettings.PATH] = path
-        self.sensor = gsdevice.Camera(dev_type=self.settings[SensorSettings.SERIAL_ID])
+        self.reading_thread: Optional[threading.Thread] = None
+        self.recording_thread: Optional[threading.Thread] = None
+        self.stop_event: threading.Event = threading.Event()
+        self.recording_event: threading.Event = threading.Event()
+
+    def initialize(self) -> None:
+        # Can't find multiple connected Gelsight sensors
+        # self.sensor = GelsightMiniCamera()
+        self.sensor = Camera(dev_type='GelSight Mini')
 
     def connect(self) -> None:
         self.sensor.connect()
 
-    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Image:
-        fps = self.get(SensorSettings.FPS)
-        if fps is None:
-            raise ValueError("FPS setting must be set before calibrating.")
+        # Start the reading thread
+        self.start_reading()
 
-        interval = 1.0 / fps
+    def set(self, attr: SensorSettings, value: Any = None) -> Any:
+        warnings.warn("The GelsightMini sensor does not support setting a value.", stacklevel=2)
+
+    def get(self, attr: SensorSettings) -> Any:
+        if not isinstance(attr, SensorSettings):
+            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead")
+        return getattr(self.config, attr.name.lower(), None)
+
+    def read(self, attr: DataStream, value: Any = None) -> Optional[Image]:
+        if not isinstance(attr, DataStream):
+            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead")
+
+        if attr == DataStream.FRAME:
+            return self.central_buffer.get()
+        else:
+            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute. "
+                          f"Returning None.", stacklevel=2)
+            return None
+
+    def show(self, attr: DataStream):
+        if not isinstance(attr, DataStream):
+            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead")
+
+        if attr == DataStream.FRAME:
+            while not self.stop_event.is_set():
+                image = self.read(attr=DataStream.FRAME)
+                if image is not None:
+                    cv2.imshow('Digit view', image.as_cv2())
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    self.stop_event.set()
+                    break
+
+            cv2.destroyAllWindows()
+        else:
+            warnings.warn(f"The provided attribute '{attr}' did not match any available attribute.",
+                          stacklevel=2)
+
+    def calibrate(self, num_frames: int = 100, skip_frames: int = 20) -> Optional[Image]:
+        interval: float = 1.0 / self.config.sampling_frequency
 
         # Skip the initial frames
-        for _ in range(skip_frames):
-            self.read(attr=DataStream.FRAME)
-            time.sleep(interval)  # Sleep for the time determined by FPS
+        skipped: int = 0
+        while skipped < skip_frames:
+            image = self.read(attr=DataStream.FRAME)
+            if image is not None:
+                skipped += 1
+            time.sleep(interval)
 
         # Collect frames after skipping
         frames = []
-        for _ in range(num_frames):
+        collected = 0
+        while collected < num_frames:
             image = self.read(attr=DataStream.FRAME)
-            frames.append(image.as_cv2())
-            time.sleep(interval)  # Sleep for the time determined by FPS
+            if image is not None:
+                frames.append(image.as_cv2())
+                collected += 1
+            time.sleep(interval)
 
         # Calculate the average frame
         average_frame = np.mean(frames, axis=0).astype(np.uint8)
         average_image = Image(image=average_frame, rotation=(0, 1, 2))
 
-        self.settings[SensorSettings.CALIBRATION] = average_image
-
+        self.config._calibration = average_image
         return average_image
 
-    def set(self, attr: SensorSettings, value: Any = None) -> Any:
-        if not isinstance(attr, SensorSettings) or attr is not None:
-            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.\n")
+    def disconnect(self):
+        self.stop_event.set()
+        self.recording_event.set()
+        if self.reading_thread:
+            self.reading_thread.join()
+        if self.recording_thread:
+            self.recording_thread.join()
 
-        if attr is not None:
-            warnings.warn(
-                "The GelsightMini sensor only supports the following options to be set: None. The provided "
-                "attribute did not match any of these options and was skipped.\n",
-                stacklevel=2)
+        self.sensor.cam.release()
 
-    def get(self, attr: SensorSettings) -> Any:
-        if not isinstance(attr, SensorSettings):
-            raise TypeError(f"Expected attr to be of type SensorSettings but found {type(attr)} instead.\n")
+    def start_reading(self):
+        """Start reading data from the sensor at the configured sampling frequency."""
 
-        if attr not in self.settings:
-            available_attributes = ", ".join(setting for setting in self.settings.keys())
-            warnings.warn(f"The GelsightMini sensor only supports the following options to be retrieved: "
-                          f"{available_attributes}. The provided attribute '{attr}' did not match any of these "
-                          f"options. Returning None instead.\n", stacklevel=2)
-            return None
+        def read_sensor():
+            interval = 1.0 / self.config.sampling_frequency
+            while not self.stop_event.is_set():
+                start_time = time.time()
+                try:
+                    frame = self.sensor.get_image()
+                    if frame is not None:
+                        image = Image(image=frame, rotation=(0, 1, 2))
+                        self.central_buffer.put(image)
+                except Exception as e:
+                    print(e)
+                elapsed_time = time.time() - start_time
+                time_to_sleep = interval - elapsed_time
+                if time_to_sleep > 0:
+                    time.sleep(time_to_sleep)
 
-        return self.settings[attr]
+        self.reading_thread = threading.Thread(target=read_sensor)
+        self.reading_thread.start()
 
-    def read(self, attr: DataStream, value: Any = None) -> Any:
-        if not isinstance(attr, DataStream):
-            raise TypeError(f"Expected attr to be of type DataStream but found {type(attr)} instead.\n")
+    def start_recording(self):
+        """Start recording data from the central buffer at the configured sampling frequency."""
+        if self.recording_thread and self.recording_thread.is_alive():
+            return
 
-        if attr == DataStream.FRAME:
-            if value is not None:
-                raise TypeError(f"When reading frames, expected value must be None but found {value} instead")
-            return self.sensor.get_image()
+        # Clear the event to allow the new recording session to start
+        self.recording_event.clear()
 
-        else:
-            warnings.warn("The provided attribute did not match any available attribute.\n")
-
-    def show(self, attr: DataStream, recording: bool = False) -> None:
-        if attr == DataStream.FRAME:
-            fps = self.get(attr=SensorSettings.FPS)
-            interval = 1.0 / fps
-
-            with ImageWriter(file_path=self.settings["path"], fps=fps) as recorder:
-                while True:
-                    start_time = time.time()  # Record the start time
+        def record_data():
+            interval = 1.0 / self.config.recording_frequency
+            with ImageWriter(file_path=self.path, sensor_name=self.config.sensor_name,
+                             config=str(self._to_filtered_dict())) as recorder:
+                while not self.recording_event.is_set():
+                    start_time = time.time()
                     image = self.read(attr=DataStream.FRAME)
-
-                    if recording:
-                        recorder.save(image)
-
-                    cv2.imshow('Image', image.as_cv2())
-
-                    if cv2.waitKey(1) == 27:  # Break loop if Esc key is pressed
-                        break
-
+                    if image:
+                        recorder.save_to_buffer(image)
                     elapsed_time = time.time() - start_time
                     time_to_sleep = interval - elapsed_time
                     if time_to_sleep > 0:
                         time.sleep(time_to_sleep)
 
-            cv2.destroyAllWindows()
+        self.recording_thread = threading.Thread(target=record_data)
+        self.recording_thread.start()
+        self.recording = True
 
-        else:
-            warnings.warn("The provided attribute did not match any available attribute.\n", stacklevel=2)
-            return None
+    def stop_recording(self):
+        """Stop the ongoing recording."""
+        if self.recording_thread and self.recording_thread.is_alive():
+            self.recording_event.set()
+            self.recording_thread.join()
+            self.recording_thread = None
 
-    def info(self, verbose: bool = True):
-        if verbose:
-            pprint.pprint(self.settings)
+        self.recording = False
 
-        return self.settings
-
-    def disconnect(self):
-        pass
+    def _to_filtered_dict(self) -> Dict:
+        """Returns a dictionary with specific attribute-value pairs."""
+        include_keys: List[str] = [
+            'sensor_name', 'sensor_type', 'sampling_frequency', 'recording_frequency'
+        ]
+        data: Dict = self.config.dict()
+        filtered_data: Dict = {key: value for key, value in data.items() if key in include_keys}
+        return filtered_data

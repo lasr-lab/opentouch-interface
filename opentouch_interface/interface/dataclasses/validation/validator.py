@@ -14,6 +14,8 @@ from opentouch_interface.interface.dataclasses.group_registry import GroupRegist
 from opentouch_interface.interface.dataclasses.image.image import Image
 from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
 from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.gelsight_config import GelsightConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.sensor_config import SensorConfig
 
 
 class SliderConfig(BaseModel):
@@ -107,10 +109,10 @@ class Validator:
 
         self.group_name: str = ""
         self.path: str = ""
-        self.sensors: List[Union[DigitConfig, FileConfig]] = []
+        self.sensors: List[SensorConfig] = []
         self.payload: List[Dict[str, Any]] = []
 
-    def validate(self) -> (str, Optional[str], List[Union[DigitConfig, FileConfig]], List[Dict[str, Any]]):
+    def validate(self) -> (str, Optional[str], List[SensorConfig], List[Dict[str, Any]]):
 
         # Validate an uploaded config
         if self._file:
@@ -136,11 +138,19 @@ class Validator:
 
         # Manually created YAML file in the dashboard
         elif self._yaml_config:
-            yaml_config = self._yaml_config
+            # Config comes from using code
+            if 'sensor' in self._yaml_config:
+                yaml_config = {
+                    'sensors': [self._yaml_config['sensor']]
+                }
+
+            # Code comes from using the dashboard (manual entry and uploaded group files)
+            else:
+                yaml_config = self._yaml_config
 
         # Exit if no valid input was provided
         else:
-            return
+            raise ValueError("No YAML file input")
 
         # Grab values from config
         sensors: List[Dict[str, Union[str, int]]] = yaml_config.get('sensors', [])
@@ -152,22 +162,28 @@ class Validator:
 
         # Validate sensors
         if not sensors:
-            raise ValueError(f"Group must contain at least one sensor.")
+            raise ValueError("Group must contain at least one sensor.")
+
+        for sensor in sensors:
+            print(type(sensor))
 
         if len(sensors) != len({sensor["sensor_name"] for sensor in sensors}):
-            raise ValueError(f"Sensor names should be unique inside a group.")
+            raise ValueError("Sensor names should be unique inside a group.")
 
         for sensor_dict in sensors:
             if 'sensor_type' in sensor_dict:
                 sensor_type = sensor_dict['sensor_type']
                 if sensor_type == 'DIGIT':
                     self.sensors.append(DigitConfig(**sensor_dict))
+                elif sensor_type == 'GELSIGHT_MINI':
+                    self.sensors.append(GelsightConfig(**sensor_dict))
+
                 # Add more configs for other sensors here
 
                 else:
                     raise ValueError(f"Invalid sensor type '{sensor_type}'")
             else:
-                raise ValueError(f"Missing sensor type in sensors")
+                raise ValueError("Missing sensor type in sensors")
 
         # Validate payload
         for element_config in payload:
@@ -180,7 +196,7 @@ class Validator:
                 else:
                     raise ValueError(f"Invalid element type '{element_type}'")
             else:
-                raise ValueError(f"Missing type in payload")
+                raise ValueError("Missing type in payload")
 
     def _validate_h5(self) -> None:
         """

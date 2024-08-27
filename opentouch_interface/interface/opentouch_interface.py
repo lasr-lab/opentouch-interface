@@ -1,18 +1,15 @@
-from typing import Union
-
 from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
 from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.gelsight_config import GelsightConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.sensor_config import SensorConfig
 from opentouch_interface.interface.sensors.file_sensor import FileSensor
-from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class OpentouchInterface:
 
-    def __new__(cls, config: Union[DigitConfig, FileConfig], *args, **kwargs):
+    def __new__(cls, config: SensorConfig, *args, **kwargs):
 
-        sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[config.sensor_type]
-
-        if sensor_type == TouchSensor.SensorType.DIGIT:
+        if isinstance(config, DigitConfig):
             try:
                 from opentouch_interface.interface.sensors.digit import DigitSensor
                 return DigitSensor(config=config)
@@ -20,16 +17,16 @@ class OpentouchInterface:
                 raise ImportError("DigitSensor dependencies are not installed. Please install them using 'pip install "
                                   "digit-interface'") from e
 
-        # elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI:
-        #     try:
-        #         from opentouch_interface.interface.sensors.gelsight_mini import GelsightMiniSensor
-        #         return GelsightMiniSensor()
-        #     except ImportError as e:
-        #         raise ImportError("GelsightMiniSensor dependencies are not installed. Please install them using 'pip "
-        #                           "install git+ssh://git@github.com/gelsightinc/gsrobotics.git'") from e
+        if isinstance(config, GelsightConfig):
+            try:
+                from opentouch_interface.interface.sensors.gelsight_mini import GelsightMiniSensor
+                return GelsightMiniSensor(config=config)
+            except ImportError as e:
+                raise ImportError("Gelsight Mini dependencies are not installed. Please install them using 'pip install"
+                                  " gelsight@git+https://github.com/gelsightinc/gsrobotics") from e
 
-        elif sensor_type == TouchSensor.SensorType.FILE:
+        elif isinstance(config, FileConfig):
             return FileSensor(config=config)
 
         else:
-            raise ValueError(f'Invalid sensor type {sensor_type}')
+            raise ValueError(f'Invalid sensor config {type(config)}')

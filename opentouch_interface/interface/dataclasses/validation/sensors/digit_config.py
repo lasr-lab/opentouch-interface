@@ -26,9 +26,9 @@ class DigitConfig(BaseModel, arbitrary_types_allowed=True):
     _calibration: Image = PrivateAttr(default=None)
     '''Private attribute to store the calibration image, defaults to None'''
     sampling_frequency: int = Field(30, description="Sampling frequency in Hz")
-    '''The sampling frequency in Hz, defaults to 30Hz'''
+    '''The sampling frequency in Hz, defaults to 30 Hz'''
     recording_frequency: int = Field(0, description="Recording frequency in Hz")
-    '''The recording frequency in Hz, defaults to sampling_frequency (which by default is 30Hz)'''
+    '''The recording frequency in Hz, defaults to sampling_frequency (which by default is 30 Hz)'''
 
     @model_validator(mode='after')
     def validate_model(self):

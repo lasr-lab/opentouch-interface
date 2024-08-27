@@ -5,8 +5,8 @@ from typing import Tuple
 
 class Image:
     def __init__(self, image: np.ndarray, rotation: Tuple[int, int, int]) -> None:
-        self.image = image
-        self.rotation = rotation
+        self.image: np.ndarray = image
+        self.rotation: Tuple[int, int, int] = rotation
 
     def as_cv2(self) -> np.ndarray:
         return self.image
