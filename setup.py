@@ -7,7 +7,7 @@ def parse_requirements(filename):
 
 
 setup(
-    name='opentouch_interface',
+    name='opentouch-interface',
     version='0.1',
     packages=find_packages(),
     install_requires=parse_requirements('requirements.txt'),
