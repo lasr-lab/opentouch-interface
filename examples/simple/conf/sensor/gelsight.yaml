@@ -1,0 +1,7 @@
+# Mandatory
+sensor_type: "GELSIGHT_MINI"    # Use "GELSIGHT_MINI".
+sensor_name: "Second Gripper"   # Sensor name (arbitrary).
+
+# Optional
+sampling_frequency: 30          # Data request rate (Hz). Default: 30.
+recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.

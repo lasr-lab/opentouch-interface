@@ -138,11 +138,19 @@ class Validator:
 
         # Manually created YAML file in the dashboard
         elif self._yaml_config:
-            yaml_config = self._yaml_config
+            # Config comes from using code
+            if 'sensor' in self._yaml_config:
+                yaml_config = {
+                    'sensors': [self._yaml_config['sensor']]
+                }
+
+            # Code comes from using the dashboard (manual entry and uploaded group files)
+            else:
+                yaml_config = self._yaml_config
 
         # Exit if no valid input was provided
         else:
-            return
+            raise ValueError("No YAML file input")
 
         # Grab values from config
         sensors: List[Dict[str, Union[str, int]]] = yaml_config.get('sensors', [])
@@ -154,10 +162,13 @@ class Validator:
 
         # Validate sensors
         if not sensors:
-            raise ValueError(f"Group must contain at least one sensor.")
+            raise ValueError("Group must contain at least one sensor.")
+
+        for sensor in sensors:
+            print(type(sensor))
 
         if len(sensors) != len({sensor["sensor_name"] for sensor in sensors}):
-            raise ValueError(f"Sensor names should be unique inside a group.")
+            raise ValueError("Sensor names should be unique inside a group.")
 
         for sensor_dict in sensors:
             if 'sensor_type' in sensor_dict:
@@ -172,7 +183,7 @@ class Validator:
                 else:
                     raise ValueError(f"Invalid sensor type '{sensor_type}'")
             else:
-                raise ValueError(f"Missing sensor type in sensors")
+                raise ValueError("Missing sensor type in sensors")
 
         # Validate payload
         for element_config in payload:
@@ -185,7 +196,7 @@ class Validator:
                 else:
                     raise ValueError(f"Invalid element type '{element_type}'")
             else:
-                raise ValueError(f"Missing type in payload")
+                raise ValueError("Missing type in payload")
 
     def _validate_h5(self) -> None:
         """

@@ -5,14 +5,54 @@ from typing import Any, Optional, Dict, List
 
 import cv2
 import numpy as np
+from gelsight.gsdevice import Camera
 
 from opentouch_interface.interface.dataclasses.buffer import CentralBuffer
-from opentouch_interface.interface.dataclasses.image.image_writer import ImageWriter
 from opentouch_interface.interface.dataclasses.image.image import Image
+from opentouch_interface.interface.dataclasses.image.image_writer import ImageWriter
 from opentouch_interface.interface.dataclasses.validation.sensors.gelsight_config import GelsightConfig
 from opentouch_interface.interface.options import SensorSettings, DataStream
 from opentouch_interface.interface.touch_sensor import TouchSensor
-from gelsight import gsdevice
+
+
+# class GelsightMiniCamera:
+#     def __init__(self):
+#         self._dev_id: Optional[int] = None
+#         self._camera: Optional[cv2.VideoCapture] = None
+#
+#     def connect(self) -> None:
+#         for file in os.listdir("/sys/class/video4linux"):
+#             real_file = os.path.join("/sys/class/video4linux", file, "name")
+#             with open(real_file, "rt") as name_file:
+#                 name = name_file.read().strip()
+#
+#             if 'GelSight Mini' in name:
+#                 self._dev_id = int(re.search(r"\d+$", file).group())
+#
+#         self._camera = cv2.VideoCapture(self._dev_id)
+#         if not self._camera or not self._camera.isOpened():
+#             warnings.warn("Failed to open GelSight Mini camera device")
+#
+#     def get_image(self) -> Optional[np.ndarray]:
+#         if self._camera:
+#             ret, frame = self._camera.read()
+#             if ret and frame is not None:
+#                 # Remove 1/7th of the border from each side
+#                 border_size_x = int(frame.shape[0] * (1 / 7))
+#                 border_size_y = int(frame.shape[1] * (1 / 7))
+#
+#                 # Crop the image
+#                 cropped_frame = frame[border_size_x + 2:frame.shape[0] - border_size_x, border_size_y:frame.shape[1]
+#                                                                                                       - border_size_y]
+#
+#                 # Resize the image to 320x240
+#                 resized_frame = cv2.resize(cropped_frame, (320, 240))
+#
+#                 return resized_frame
+#         return None
+#
+#     def disconnect(self):
+#         self._camera.release()
 
 
 class GelsightMiniSensor(TouchSensor):
@@ -27,11 +67,15 @@ class GelsightMiniSensor(TouchSensor):
         self.recording_event: threading.Event = threading.Event()
 
     def initialize(self) -> None:
-        # TODO: Can't find multiple connected Gelsight sensors
-        self.sensor = gsdevice.Camera(dev_type="Gelsight Mini")
+        # Can't find multiple connected Gelsight sensors
+        # self.sensor = GelsightMiniCamera()
+        self.sensor = Camera(dev_type='GelSight Mini')
 
     def connect(self) -> None:
         self.sensor.connect()
+
+        # Start the reading thread
+        self.start_reading()
 
     def set(self, attr: SensorSettings, value: Any = None) -> Any:
         warnings.warn("The GelsightMini sensor does not support setting a value.", stacklevel=2)
@@ -105,6 +149,8 @@ class GelsightMiniSensor(TouchSensor):
             self.reading_thread.join()
         if self.recording_thread:
             self.recording_thread.join()
+
+        self.sensor.cam.release()
 
     def start_reading(self):
         """Start reading data from the sensor at the configured sampling frequency."""
