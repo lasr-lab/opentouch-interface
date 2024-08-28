@@ -1,3 +1,4 @@
+import os
 from setuptools import setup, find_packages
 
 
@@ -6,9 +7,17 @@ def parse_requirements(filename):
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 
+# Determine the version number
+if os.getenv('GITHUB_REF') and os.getenv('GITHUB_REF').startswith('refs/tags/'):
+    # Use the version from the tag (assuming the tag is the version number)
+    version = os.getenv('GITHUB_REF').split('/')[-1]
+else:
+    # Use a development version based on the run number for TestPyPI
+    version = f"0.1.dev{os.getenv('GITHUB_RUN_NUMBER')}"
+
 setup(
     name='opentouch-interface',
-    version='0.1.2',
+    version=version,
     packages=find_packages(),
     install_requires=parse_requirements('requirements.txt'),
     entry_points={
