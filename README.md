@@ -21,7 +21,16 @@ Key features include:
 
 ## Installation
 
-To install OpenTouch Interface, follow these steps:
+OpenTouch Interface requires Python 3.11 or higher and has been tested on Ubuntu 20.04.
+You can install it in one of two ways: either via `pip` or by cloning the repository.
+
+### Method 1: Install via `pip`
+
+```bash
+pip install opentouch-interface
+```
+
+### Method 2: Install via Cloning the Repository
 
 ```bash
 git clone https://github.com/lasr-lab/opentouch-interface
@@ -29,21 +38,36 @@ cd opentouch-interface
 pip install .
 ```
 
-Additionally, depending on the specific sensors you are using, make sure you have all their necessary libraries installed by checking the installation guides of the respective sensors ([Digit](https://github.com/lasr-lab/digit-interface), [GelSight Mini](https://github.com/gelsightinc/gsrobotics)) or by following this quick installation guide:
+### Example of Setting Up a Virtual Environment with Python 3.11
 
-- ### Digit
+If you are using a system with multiple Python versions, you can create a virtual environment with Python 3.11 like this:
+
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+```
+
+Then, proceed with the installation using one of the methods above.
+
+### Additional Sensor-Specific Dependencies
+
+Depending on the specific sensors you are using, make sure you have all their necessary libraries 
+installed by checking the installation guides of the respective sensors or by following this quick installation guide:
+
+- #### [Digit](https://github.com/facebookresearch/digit-interface)
 
 ```bash
 pip install digit-interface
 ```
 
-- ### GelSight Mini
+- #### [GelSight Mini](https://github.com/gelsightinc/gsrobotics)
 
 ```bash
 pip install gelsight@git+https://github.com/gelsightinc/gsrobotics
 ```
 
 ## Connecting Sensors
+
 You can connect touch sensors to the OpenTouch Interface in two main ways:
 
 ### 1. Dashboard (Web Interface)
@@ -153,9 +177,11 @@ python examples/simple/demo.py sensor=digit sensor.serial_id=<your-serial-id>
 ```
 
 #### Features
+
 For a complete overview of features, refer to the methods defined in the [`TouchInterface`](opentouch_interface/interface/touch_sensor.py) class. To understand the underlying implementation, check out the specific sensor classes, such as the [`Digit`](opentouch_interface/interface/sensors/digit.py).
 
 #### Limitations
+
 Currently, the code interface does not support grouping of multiple sensors, data annotations or the replay of recorded data.
 For that, please use the dashboard.
 

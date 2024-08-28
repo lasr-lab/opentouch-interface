@@ -181,7 +181,8 @@ class SensorRegistry:
                 sensor.connect()
                 sensor.calibrate()
 
-                viewer: BaseImageViewer = ViewerFactory(sensor)
+                sensor_type: TouchSensor.SensorType = TouchSensor.SensorType[sensor_config.sensor_type]
+                viewer: BaseImageViewer = ViewerFactory(sensor=sensor, sensor_type=sensor_type)
                 viewers.append(viewer)
 
             # Create and save the group
