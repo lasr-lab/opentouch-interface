@@ -60,10 +60,10 @@ installed by checking the installation guides of the respective sensors or by fo
 pip install digit-interface
 ```
 
-- #### [GelSight Mini](https://github.com/gelsightinc/gsrobotics)
+- #### [GelSight Mini](https://www.gelsight.com/gelsightmini/)
 
 ```bash
-pip install gelsight@git+https://github.com/gelsightinc/gsrobotics
+Supported by default
 ```
 
 ## Connecting Sensors
@@ -189,6 +189,11 @@ For that, please use the dashboard.
 
 - **No Grouping in Code Interface**: The code interface currently does not support the grouping of multiple sensors.
 - **Limited Data Annotation and Replay**: Data annotations and replay of recorded data are only available through the dashboard.
+
+---
+
+## Contribution
+If you want to contribute to OpenTouch Interface, you can find an explanation on how to do so [here](CONTRIBUTING.md).
 
 ---
 

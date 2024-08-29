@@ -1,15 +1,25 @@
+import importlib
+
 import numpy as np
-import torch
-from typing import Tuple
+from typing import Tuple, TypeVar
+
+T = TypeVar('T', bound='torch.Tensor')
 
 
 class Image:
     def __init__(self, image: np.ndarray, rotation: Tuple[int, int, int]) -> None:
-        self.image: np.ndarray = image
-        self.rotation: Tuple[int, int, int] = rotation
+        self._image: np.ndarray = image
+        self._rotation: Tuple[int, int, int] = rotation
 
     def as_cv2(self) -> np.ndarray:
-        return self.image
+        return self._image
 
-    def as_tensor(self) -> torch.Tensor:
-        return torch.from_numpy(np.transpose(self.image, self.rotation))
+    def as_tensor(self) -> 'T':
+        try:
+            torch = importlib.import_module('torch')
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "The 'torch' library is not installed. Please install it using 'pip install torch'."
+            )
+
+        return torch.from_numpy(np.transpose(self._image, self._rotation))

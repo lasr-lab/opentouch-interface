@@ -1,3 +1,4 @@
+import time
 from typing import Optional, Dict, List, Any, Union
 
 import streamlit as st
@@ -175,7 +176,11 @@ class SensorRegistry:
             # For each sensor config, create a sensor
             viewers: List[BaseImageViewer] = []
 
-            for sensor_config in sensor_configs:
+            progress_bar = st.progress(0)
+            for index, sensor_config in enumerate(sensor_configs):
+                progress = index / len(sensor_configs)
+                progress_bar.progress(value=progress, text=f'Initializing sensor {sensor_config.sensor_name}')
+
                 sensor: TouchSensor = OpentouchInterface(config=sensor_config)
                 sensor.initialize()
                 sensor.connect()
@@ -185,18 +190,20 @@ class SensorRegistry:
                 viewer: BaseImageViewer = ViewerFactory(sensor=sensor, sensor_type=sensor_type)
                 viewers.append(viewer)
 
+            progress_bar.progress(value=100, text='Finished')
+
             # Create and save the group
             group: ViewerGroup = ViewerGroup(group_name=group_name, path=path, viewers=viewers, payload=payload)
             group_registry.add_group(group=group)
 
             # Output message
             message = '\n'.join(
-                f'{viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
+                f'- {viewer.sensor.config.sensor_name} ({viewer.sensor.config.sensor_type}) \n'
                 for viewer in viewers)
 
             st.success(
-                body=f"The following sensors have been successfully added as part of the group '{group_name}': "
-                     f"{message}",
+                body=f"The following sensors have been successfully added as part of the group **{group_name}**: "
+                     f"\n\n{message}",
                 icon="💡"
             )
 

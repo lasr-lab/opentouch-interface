@@ -1,6 +1,5 @@
 streamlit
 numpy
-torch
 h5py
 PyYAML
 hydra-core

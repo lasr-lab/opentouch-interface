@@ -16,6 +16,7 @@ from opentouch_interface.interface.dataclasses.validation.sensors.digit_config i
 from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
 from opentouch_interface.interface.dataclasses.validation.sensors.gelsight_config import GelsightConfig
 from opentouch_interface.interface.dataclasses.validation.sensors.sensor_config import SensorConfig
+from opentouch_interface.interface.touch_sensor import TouchSensor
 
 
 class SliderConfig(BaseModel):
@@ -164,18 +165,15 @@ class Validator:
         if not sensors:
             raise ValueError("Group must contain at least one sensor.")
 
-        for sensor in sensors:
-            print(type(sensor))
-
         if len(sensors) != len({sensor["sensor_name"] for sensor in sensors}):
             raise ValueError("Sensor names should be unique inside a group.")
 
         for sensor_dict in sensors:
             if 'sensor_type' in sensor_dict:
                 sensor_type = sensor_dict['sensor_type']
-                if sensor_type == 'DIGIT':
+                if sensor_type == TouchSensor.SensorType.DIGIT.name:
                     self.sensors.append(DigitConfig(**sensor_dict))
-                elif sensor_type == 'GELSIGHT_MINI':
+                elif sensor_type == TouchSensor.SensorType.GELSIGHT_MINI.name:
                     self.sensors.append(GelsightConfig(**sensor_dict))
 
                 # Add more configs for other sensors here

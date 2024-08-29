@@ -236,7 +236,7 @@ class ViewerGroup:
                 st.button(
                     label="Remove Group",
                     type="primary",
-                    disabled=False,
+                    disabled=self.is_recording,
                     use_container_width=True,
                     on_click=disconnect,
                     args=(),
