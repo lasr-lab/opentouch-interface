@@ -1,9 +1,7 @@
 import importlib
 
 import numpy as np
-from typing import Tuple, TypeVar
-
-T = TypeVar('T', bound='torch.Tensor')
+from typing import Tuple
 
 
 class Image:
@@ -14,7 +12,7 @@ class Image:
     def as_cv2(self) -> np.ndarray:
         return self._image
 
-    def as_tensor(self) -> 'T':
+    def as_tensor(self):
         try:
             torch = importlib.import_module('torch')
         except ModuleNotFoundError:

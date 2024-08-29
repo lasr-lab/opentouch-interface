@@ -33,8 +33,10 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/lasr-lab/opentouch-interface',
     classifiers=[
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.11',
         'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
+        'Operating System :: POSIX :: Linux',
+        'Operating System :: Ubuntu :: 20.04',
+        'Programming Language :: Python :: 3 :: Only',
     ],
 )
