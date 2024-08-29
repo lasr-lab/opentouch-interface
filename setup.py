@@ -36,7 +36,6 @@ setup(
         'Programming Language :: Python :: 3.11',
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
-        'Operating System :: Ubuntu :: 20.04',
         'Programming Language :: Python :: 3 :: Only',
     ],
 )
