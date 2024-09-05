@@ -1,0 +1,12 @@
+streamlit
+numpy
+h5py
+PyYAML
+hydra-core
+omegaconf
+matplotlib
+packaging
+decorator
+setuptools
+pydantic
+opencv-python

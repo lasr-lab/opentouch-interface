@@ -1,0 +1,38 @@
+group_name: "Robotic hand"  # Group name.
+path: "test.touch"          # File path where data should be saved (optional).
+sensors:                    # List of sensors belonging to that group
+
+  # Example for Digit Sensor
+  - sensor_type: "DIGIT"            # Use "DIGIT".
+    sensor_name: "First Gripper"    # Sensor name (unique inside a group).
+    serial_id: "D20804"             # Sensor's serial ID.
+
+    # Optional
+    intensity: 15                   # LED brightness (0-15). Default: 15.
+    resolution: "QVGA"              # Image resolution (VGA/QVGA). Default: QVGA.
+    fps: 60                         # Frame rate (30/60). Default: 60.
+    sampling_frequency: 30          # Data request rate (Hz). Default: 30.
+    recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
+
+  # Example for GelSight Mini Sensor
+  - sensor_type: "GELSIGHT_MINI"    # Use "GELSIGHT_MINI".
+    sensor_name: "Second Gripper"   # Sensor name (unique inside a group).
+
+    # Optional
+    sampling_frequency: 30          # Data request rate (Hz). Default: 30.
+    recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
+
+  # - sensor_type: ...
+  #   sensor_name: ...
+  #   ...
+  #   ...
+
+payload:
+  - type: slider                    # Use 'slider'.
+    label: "Difficulty"             # Label that will be displayed to the user.
+    min_value: -10                  # Minimum value (int). Default: 0.
+    max_value: 20                   # Maximum value (int). Default: 10.
+    default: 8                      # Default value (int). Default: 0.
+  - type: text_input                # Use 'text_input'.
+    label: "Grasped object"         # Label that will be displayed to the user.
+    default: "apple"                # Default value (str). Default: "".
