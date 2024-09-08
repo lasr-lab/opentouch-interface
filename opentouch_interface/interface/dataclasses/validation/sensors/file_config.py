@@ -28,3 +28,5 @@ class FileConfig(BaseModel, validate_assignment=True, arbitrary_types_allowed=Tr
             if not isinstance(self.stream, str) or self.stream != "FRAME":
                 raise ValueError(f"Invalid stream '{self.stream}': Stream must be a str set to 'FRAME'")
             self.stream: DataStream = DataStream.FRAME
+
+        return self

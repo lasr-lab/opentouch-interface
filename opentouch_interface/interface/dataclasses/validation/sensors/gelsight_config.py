@@ -29,3 +29,5 @@ class GelsightConfig(BaseModel, arbitrary_types_allowed=True):
         # Validate recording_frequency
         if self.recording_frequency <= 0:
             self.recording_frequency = self.sampling_frequency
+
+        return self

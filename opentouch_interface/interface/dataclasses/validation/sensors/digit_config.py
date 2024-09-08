@@ -53,6 +53,8 @@ class DigitConfig(BaseModel, arbitrary_types_allowed=True):
         if self.recording_frequency <= 0:
             self.recording_frequency = self.sampling_frequency
 
+        return self
+
     def set_fps(self, fps: int):
         """Set the FPS and implicitly set the resolution."""
         if fps not in [30, 60]:

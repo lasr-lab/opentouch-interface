@@ -1,6 +1,6 @@
 import threading
 import datetime
-from typing import Union, List, Self
+from typing import Union, List
 
 import h5py
 
@@ -17,7 +17,7 @@ class ImageWriter:
 
         self.frames_buffer: List[Image] = []
 
-    def __enter__(self) -> Self:
+    def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

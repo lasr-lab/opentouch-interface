@@ -80,6 +80,7 @@ celerybeat-schedule
 
 # virtualenv
 venv/
+.venv/
 ENV/
 
 # Spyder project settings
@@ -94,5 +95,5 @@ ENV/
 # Hydra
 .hydra
 
-# TODO List
+# Notes
 todo.txt

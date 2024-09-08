@@ -21,7 +21,7 @@ Key features include:
 
 ## Installation
 
-OpenTouch Interface requires Python 3.11 or higher and has been tested on Ubuntu 20.04.
+OpenTouch Interface requires Python 3.8 or higher and has been tested on Ubuntu 20.04.
 You can install it in one of two ways: either via `pip` or by cloning the repository.
 
 ### Method 1: Install via `pip`
@@ -38,12 +38,12 @@ cd opentouch-interface
 pip install .
 ```
 
-### Example of Setting Up a Virtual Environment with Python 3.11
+### Example of Setting Up a Virtual Environment with Python 3.8
 
-If you are using a system with multiple Python versions, you can create a virtual environment with Python 3.11 like this:
+If you are using a system with multiple Python versions, you can create a virtual environment with Python 3.8 like this:
 
 ```bash
-python3.11 -m venv venv
+python3.8 -m venv venv
 source venv/bin/activate
 ```
 
