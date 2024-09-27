@@ -1,6 +1,12 @@
 
 # OpenTouch Interface
 
+<!-- Info Cards -->
+
+![Python Version](https://img.shields.io/badge/Python-3.8-blue?logo=python&logoColor=white)
+![Ubuntu Version](https://img.shields.io/badge/Ubuntu-20.04-orange?logo=ubuntu&logoColor=white)
+
+
 The OpenTouch Interface is a Python package designed to provide a unified interface for various touch sensors. It simplifies the process of interacting with touch sensors by providing a consistent API regardless of the specific sensor being used.
 
 We also provide an easy-to-use web interface that lets you connect to the sensors and show their data stream without the need to code.
