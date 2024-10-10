@@ -215,7 +215,8 @@ class ViewerGroup:
                         disabled=False,
                         use_container_width=True,
                         on_click=restart_videos,
-                        args=()
+                        args=(),
+                        key=f'{self.group_name}_{self.group_index}_restart_video_key'
                     )
 
     def _unload_group(self):

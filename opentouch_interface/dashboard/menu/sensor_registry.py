@@ -1,13 +1,14 @@
 from typing import Optional, Dict, List, Any, Union
 
 import streamlit as st
+import yaml
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+from code_editor import code_editor
 
 from opentouch_interface.dashboard.menu.viewers.base.image_viewer import BaseImageViewer
 from opentouch_interface.dashboard.menu.viewers.factory import ViewerFactory
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
-from opentouch_interface.interface.dataclasses.validation.sensors.digit_config import DigitConfig
-from opentouch_interface.interface.dataclasses.validation.sensors.file_config import FileConfig
+from opentouch_interface.interface.dataclasses.validation.sensors.sensor_config import SensorConfig
 from opentouch_interface.interface.dataclasses.validation.validator import Validator
 from opentouch_interface.interface.dataclasses.viewer_group import ViewerGroup
 from opentouch_interface.interface.opentouch_interface import OpentouchInterface
@@ -58,59 +59,108 @@ class SensorRegistry:
         with self.container:
             st.divider()
 
-            sensor_type = st.selectbox(
-                label="Add a new sensor to the dashboard",
-                options=self.mapping.keys(),
-                index=None,
-                placeholder="Select a sensor",
-                label_visibility="visible"
+            # Sensor selection dropdown
+            sensor_type = self._select_sensor_type()
+
+            if sensor_type:
+                self._handle_manual_sensor_addition(sensor_type)
+            else:
+                self._handle_file_upload_sensor_addition()
+
+    def _select_sensor_type(self) -> Optional[str]:
+        """Select a sensor type from dropdown."""
+        return st.selectbox(
+            label="Add a new sensor to the dashboard",
+            options=self.mapping.keys(),
+            index=None,
+            placeholder="Select a sensor",
+            label_visibility="visible"
+        )
+
+    def _handle_manual_sensor_addition(self, sensor_type: str) -> None:
+        """Handle manually adding a sensor via form input."""
+        selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
+        form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
+
+        yaml_config: Optional[Dict[str, str]] = None
+        if form.is_filled():
+            form_dict = form.to_dict()
+            yaml_config = {
+                'group_name': form_dict['sensor_name'],
+                'path': form_dict['path'],
+                'sensors': [form_dict],
+                'payload': [],
+            }
+
+        # Add sensor button
+        st.button(
+            label="Add sensor",
+            type="primary",
+            disabled=not yaml_config,
+            on_click=lambda: self.add_group(yaml_config)
+        )
+
+    def _handle_file_upload_sensor_addition(self) -> None:
+        """Handle sensor addition via YAML or .touch file upload."""
+        file: UploadedFile = st.file_uploader(
+            label="Or choose sensor config",
+            type=['yaml', 'touch'],
+            accept_multiple_files=False,
+            label_visibility="collapsed"
+        )
+
+        if file:
+            # Display code editor if it's a YAML file
+            if file.name.endswith('.yaml'):
+                self._process_yaml_file(file)
+            else:
+                self.add_group(config=file)
+        else:
+            # Display info message if no sensors are added
+            if not st.session_state.group_registry.viewer_count():
+                self._show_info_message()
+
+    def _process_yaml_file(self, file: UploadedFile) -> None:
+        """Process and update the YAML file before adding sensor."""
+        content = file.read().decode("utf-8")
+        response = code_editor(content, lang="yaml")
+
+        left, right = st.columns(2)
+        has_error, updated_config = self._parse_yaml(response['text'] or content)
+
+        with right:
+            if has_error:
+                st.error("Invalid YAML format.")
+            else:
+                st.success("Updated your sensor config.")
+
+        with left:
+            st.info(body="Press Ctrl+Return to save your changes", icon="💡")
+
+            st.button(
+                label="Add sensor",
+                type="primary",
+                disabled=not updated_config,
+                use_container_width=True,
+                on_click=lambda: self.add_group(updated_config)
             )
 
-            # The sensor is added manually via an input form
-            if sensor_type:
-                selected_sensor: TouchSensor.SensorType = self.mapping[sensor_type]
-                form: SensorForm = self.render_input_fields(sensor_type=selected_sensor)
+    @staticmethod
+    def _parse_yaml(content: str) -> (bool, Optional[Dict]):
+        """Parse YAML content, returning if there was an error and the parsed config."""
+        try:
+            return False, yaml.safe_load(content)
+        except yaml.YAMLError:
+            return True, None
 
-                yaml_config: Optional[Dict[str, str]] = None
-                button_enabled: bool = False
-                if form.is_filled():
-                    form_dict = form.to_dict()
-                    yaml_config = {
-                        'group_name': form_dict['sensor_name'],
-                        'path': form_dict['path'],
-                        'sensors': [
-                            {**form_dict}
-                        ],
-                        'payload': [],
-                    }
-
-                    button_enabled = True
-
-                st.button(
-                    label="Add sensor",
-                    type="primary",
-                    disabled=not button_enabled,
-                    on_click=lambda: self.add_group(yaml_config)
-                )
-
-            # The sensor is added via a YAML or touch file
-            else:
-                file: UploadedFile = st.file_uploader(
-                    label="Or choose sensor config",
-                    type=['yaml', 'touch'],
-                    accept_multiple_files=False,
-                    label_visibility="collapsed"
-                )
-
-                if file:
-                    self.add_group(config=file)
-
-            if st.session_state.group_registry.viewer_count() == 0:
-                st.info(
-                    body="To add a new sensor to the 'Live View' page, you can either manually enter the sensor "
-                         "details or select a YAML or .touch file containing the sensor's configuration.",
-                    icon="💡"
-                )
+    @staticmethod
+    def _show_info_message() -> None:
+        """Show an info message if no sensors are added."""
+        st.info(
+            body="To add a new sensor to the 'Live View' page, you can either manually enter the sensor "
+                 "details or select a YAML or .touch file containing the sensor's configuration.",
+            icon="💡"
+        )
 
     def render_input_fields(self, sensor_type: TouchSensor.SensorType) -> SensorForm:
         if sensor_type == TouchSensor.SensorType.DIGIT:
@@ -164,7 +214,7 @@ class SensorRegistry:
     def add_group(config: Union[UploadedFile, Dict[str, str]]):
         group_name: str
         path: Optional[str]
-        sensor_configs: List[Union[DigitConfig, FileConfig]]
+        sensor_configs: List[Union[SensorConfig]]
         payload: List[Dict[str, Any]]
 
         try:

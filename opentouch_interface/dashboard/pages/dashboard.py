@@ -1,5 +1,4 @@
 import streamlit as st
-
 from opentouch_interface.dashboard.util.key_generator import UniqueKeyGenerator
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
 
@@ -28,9 +27,16 @@ live_view = st.Page(
     icon="📈"
 )
 
+model_execution = st.Page(
+    page="model_execution.py",
+    title="Model Execution",
+    icon="🧠"
+)
+
 pg = st.navigation(
     {
-        "Sensor Management": [add_sensor, live_view]
+        "Sensor Management": [add_sensor, live_view],
+        "Neural Networks": [model_execution]
     }
 )
 

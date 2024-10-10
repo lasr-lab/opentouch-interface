@@ -10,3 +10,4 @@ decorator
 setuptools
 pydantic
 opencv-python
+streamlit_code_editor
