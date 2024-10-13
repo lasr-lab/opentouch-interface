@@ -1,4 +1,5 @@
 import streamlit as st
+from opentouch_interface.dashboard.models.model_registry import ModelRegistry
 from opentouch_interface.dashboard.util.key_generator import UniqueKeyGenerator
 from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
 
@@ -8,6 +9,9 @@ if 'group_registry' not in st.session_state:
 
 if 'key_generator' not in st.session_state:
     st.session_state.key_generator = UniqueKeyGenerator()
+
+if 'model_registry' not in st.session_state:
+    st.session_state.model_registry = ModelRegistry()
 
 st.set_page_config(
     page_title="Opentouch Viewer",
@@ -27,17 +31,24 @@ live_view = st.Page(
     icon="📈"
 )
 
-model_execution = st.Page(
-    page="model_execution.py",
-    title="Model Execution",
+add_model = st.Page(
+    page="add_model.py",
+    title="Add Model",
+    icon="🧠"
+)
+
+model_view = st.Page(
+    page="model_view.py",
+    title="Model View",
     icon="🧠"
 )
 
 pg = st.navigation(
     {
         "Sensor Management": [add_sensor, live_view],
-        "Neural Networks": [model_execution]
+        "Model Management": [add_model, model_view]
     }
 )
 
+# Run the navigation interface to allow switching between pages
 pg.run()

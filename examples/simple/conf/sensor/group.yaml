@@ -14,13 +14,13 @@ sensors:                    # List of sensors belonging to that group
     sampling_frequency: 30          # Data request rate (Hz). Default: 30.
     recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
 
-  # Example for GelSight Mini Sensor
-  - sensor_type: "GELSIGHT_MINI"    # Use "GELSIGHT_MINI".
-    sensor_name: "Second Gripper"   # Sensor name (unique inside a group).
-
-    # Optional
-    sampling_frequency: 30          # Data request rate (Hz). Default: 30.
-    recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
+#  # Example for GelSight Mini Sensor
+#  - sensor_type: "GELSIGHT_MINI"    # Use "GELSIGHT_MINI".
+#    sensor_name: "Second Gripper"   # Sensor name (unique inside a group).
+#
+#    # Optional
+#    sampling_frequency: 30          # Data request rate (Hz). Default: 30.
+#    recording_frequency: 30         # Recording rate (Hz). Default: sampling_frequency.
 
   # - sensor_type: ...
   #   sensor_name: ...
