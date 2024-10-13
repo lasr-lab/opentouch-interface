@@ -44,7 +44,7 @@ to take inspiration from existing code mainly the digit sensor as it currently i
 ### 1. Create a Config Class
 First, create a configuration class for your sensor that validates its settings.
 
-1. Navigate to the [`sensors`](opentouch_interface/interface/dataclasses/validation/sensors) directory.
+1. Navigate to the [`sensors`](opentouch_interface/core/validation/sensors) directory.
 2. Create a new Python file named after your sensor, e.g., `my_sensor_config.py`.
 3. Define a configuration class in this file based on pydantic. The following attributes are mandatory:
    ```yaml
@@ -55,37 +55,37 @@ First, create a configuration class for your sensor that validates its settings.
    recording_frequency: int
    ```
 
-**Example**: [`digit_config.py`](opentouch_interface/interface/dataclasses/validation/sensors/digit_config.py)
+**Example**: [`digit_config.py`](opentouch_interface/core/validation/digit_config.py)
 
 ### 2. Create Your Sensor Class
 Next, implement the sensor's functionality by creating a sensor class.
 
-1. Navigate to the [`sensors`](opentouch_interface/interface/sensors) directory.
+1. Navigate to the [`sensors`](opentouch_interface/core/sensors) directory.
 2. Create a new Python file for your sensor, e.g., `my_sensor.py`.
 3. Implement the sensor class that inherits from the base `TouchSensor` class. This class should define how your sensor interacts with the interface.
 
-**Example**: [`digit.py`](opentouch_interface/interface/sensors/digit.py)
+**Example**: [`digit.py`](opentouch_interface/core/sensors/digit.py)
 
 ### 3. Add Your Sensor to the Validator
 After creating the sensor class, ensure that the interface recognizes the new sensor.
 
-1. Navigate to the [`navigator.py`](opentouch_interface/interface/dataclasses/validation/validator.py) directory.
+1. Navigate to [`validator.py`](opentouch_interface/core/validation/validator.py).
 2. Add your config class to the `def _validate_yaml(self)` method.
 
 ### 4. Create a Streamlit Viewer for Your Sensor
 Finally, create a viewer for your sensor that can be used in the Streamlit dashboard.
 
-1. Navigate to the [`image`](opentouch_interface/dashboard/menu/viewers/image) directory.
+1. Navigate to the [`image`](opentouch_interface/dashboard/viewers/image) directory.
 2. Create a new Python file for your sensor's viewer, e.g., `my_sensor_viewer.py`.
-3. Implement the viewer class that inherits from the base [`BaseImageViewer`](opentouch_interface/dashboard/menu/viewers/base/image_viewer.py) 
+3. Implement the viewer class that inherits from the base [`BaseImageViewer`](opentouch_interface/dashboard/viewers/image/baes_image_viewer.py) 
 
 **Examples**:
-- Easy example with no settings: [`gelsight_viewer.py`](opentouch_interface/dashboard/menu/viewers/image/gelsight_viewer.py)
-- More complex examples with settings to change at runtime: [`digit_viewer.py`](opentouch_interface/dashboard/menu/viewers/image/digit_viewer.py)
+- Easy example with no settings: [`gelsight_viewer.py`](opentouch_interface/dashboard/viewers/image/gelsight_viewer.py)
+- More complex examples with settings to change at runtime: [`digit_viewer.py`](opentouch_interface/dashboard/viewers/image/digit_viewer.py)
 
 ### Testing and Documentation
 After adding your sensor, test its functionality thoroughly and update the documentation.
-Add an example config file of your sensor to [`sensor`](examples/simple/conf/sensor) and explain it in the [`README.md`](README.md).
+Add an example config file of your sensor to [`sensor`](samples/config/sensor) and explain it in the [`README.md`](README.md).
 
 ## Getting Help
 If you need help with your contribution, feel free to ask questions in the [GitHub Discussions](https://github.com/lasr-lab/opentouch-interface/discussions)

@@ -95,7 +95,7 @@ You can add sensors to the dashboard by:
 
 When using the dashboard, sensors are assigned to one group exactly.
 Therefore, **sensor names must be unique inside a group**.
-An example config file is provided as [`group.yaml`](examples/simple/conf/sensor/group.yaml).
+An example config file is provided as [`group.yaml`](samples/config/sensor/group.yaml).
 It is structured as follows:
 ```yaml
 group_name: "Robotic hand"  # Group name.
@@ -164,7 +164,7 @@ You can instantiate sensors and configure them using a config file. Here’s how
 python examples/simple/demo.py
 ```
 
-By default, this script uses the [`digit.yaml`](examples/simple/conf/sensor/digit.yaml) config file. You can modify this in the [`config.yaml`](examples/simple/conf/config.yaml) or specify a different config file via the terminal:
+By default, this script uses the [`digit.yaml`](samples/config/sensor/digit.yaml) config file. You can modify this in the [`config.yaml`](samples/config/config.yaml) or specify a different config file via the terminal:
 
 ```bash
 python examples/simple/demo.py sensor=<your-yaml-config>
@@ -178,7 +178,7 @@ python examples/simple/demo.py sensor=digit sensor.serial_id=<your-serial-id>
 
 #### Features
 
-For a complete overview of features, refer to the methods defined in the [`TouchInterface`](opentouch_interface/interface/touch_sensor.py) class. To understand the underlying implementation, check out the specific sensor classes, such as the [`Digit`](opentouch_interface/interface/sensors/digit.py).
+For a complete overview of features, refer to the methods defined in the [`TouchInterface`](opentouch_interface/core/sensors/touch_sensor.py) class. To understand the underlying implementation, check out the specific sensor classes, such as the [`Digit`](opentouch_interface/core/sensors/digit.py).
 
 #### Limitations
 

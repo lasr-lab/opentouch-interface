@@ -1,7 +1,7 @@
 import streamlit as st
 from opentouch_interface.dashboard.models.model_registry import ModelRegistry
 from opentouch_interface.dashboard.util.key_generator import UniqueKeyGenerator
-from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
+from opentouch_interface.dashboard.viewers.group_registry import GroupRegistry
 
 # Crete a GroupRegistry in session state
 if 'group_registry' not in st.session_state:

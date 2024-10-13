@@ -7,8 +7,8 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from opentouch_interface.dashboard.models.model import Model
 from opentouch_interface.dashboard.models.model_registry import ModelRegistry
-from opentouch_interface.interface.dataclasses.group_registry import GroupRegistry
-from opentouch_interface.interface.touch_sensor import TouchSensor
+from opentouch_interface.dashboard.viewers.group_registry import GroupRegistry
+from opentouch_interface.core.sensors.touch_sensor import TouchSensor
 
 
 class AddModel:
@@ -95,7 +95,7 @@ class AddModel:
         """
         group_registry: GroupRegistry = st.session_state.group_registry
         return {
-            f'{viewer.sensor_name} ({group.group_name})': viewer.sensor
+            f'Sensor name: {viewer.sensor_name}, Group name: {group.group_name}': viewer.sensor
             for group in group_registry.groups  # Iterate through all groups in the registry
             for viewer in group.viewers  # Iterate through all viewers in each group
         }

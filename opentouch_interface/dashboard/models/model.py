@@ -1,8 +1,8 @@
 from typing import Optional
 from streamlit.delta_generator import DeltaGenerator
-from opentouch_interface.interface.dataclasses.image.image import Image
-from opentouch_interface.interface.options import DataStream
-from opentouch_interface.interface.touch_sensor import TouchSensor
+from opentouch_interface.core.dataclasses.image.image import Image
+from opentouch_interface.core.dataclasses.options import DataStream
+from opentouch_interface.core.sensors.touch_sensor import TouchSensor
 from opentouch.core.base.base_cnn import BaseCNN
 
 
