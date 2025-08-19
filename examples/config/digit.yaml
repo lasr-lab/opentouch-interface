@@ -1,0 +1,11 @@
+# Mandatory
+sensor_type: Digit            # Use "Digit".
+sensor_name: First Gripper    # Sensor name (arbitrary).
+serial_id: D20804             # Sensor's serial ID.
+
+# Optional
+resolution: QVGA              # Image resolution: VGA (30 FPS), QVGA (60 FPS). Default: QVGA.
+rgb:                          # LED brightness (0-15). Default: 15.
+  - 15  # Red
+  - 15  # Green
+  - 15  # Blue

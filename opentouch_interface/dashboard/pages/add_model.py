@@ -1,0 +1,105 @@
+import streamlit as st
+from streamlit.runtime.uploaded_file_manager import UploadedFile
+
+from opentouch_interface.core.registries.central_registry import CentralRegistry
+from opentouch_interface.core.registries.viewer_group_registry import ViewerGroupRegistry
+from opentouch_interface.dashboard.viewers.model_viewer import Model
+from opentouch.core.model_loader import ModelLoader
+from opentouch_interface.core.registries.model_registry import ModelRegistry
+from opentouch_interface.core.sensors.touch_sensor import TouchSensor
+
+
+class AddModel:
+    """
+    A UI component for adding models to the registry in the Streamlit interface.
+    This class allows users to upload a pre-trained model, select a sensor, and
+    register the model for use in inference.
+    """
+
+    def __init__(self):
+        """
+        Initialize the AddModel component, displaying the UI header and divider.
+        """
+        # Create a container for the UI components
+        self.container = st.container()
+
+        # Display the title and a dividing line in the Streamlit container
+        with self.container:
+            st.title("Model Registry")
+            st.divider()
+
+    def show(self):
+        """
+        Display the UI elements to upload a model, select a sensor, and add the model to the registry.
+
+        The method handles the model upload process, shows a dropdown to select an available sensor,
+        and registers the model with the selected sensor upon clicking the 'Add model' button.
+        """
+        # Retrieve a dictionary of connected sensors
+        sensors = self._get_sensor_dict()
+
+        # Upload a pre-trained model file
+        model = self._upload_model()
+
+        # Dropdown to select a sensor for inference, disabled if no model is uploaded
+        selected_sensor = sensors.get(
+            st.selectbox(
+                label="Select the data source",
+                options=list(sensors.keys()),
+                placeholder="Select a sensor",
+                label_visibility="visible",
+                disabled=not model
+            ), None
+        )
+
+        # Button to add the model-sensor pair, disabled if no model or sensor is selected
+        if st.button(label="Add model", type="primary", disabled=not (model and selected_sensor)):
+            self._register_model(model, selected_sensor)
+            st.divider()
+            st.success(body="Model has been successfully added.", icon="💡")
+
+        # Display info if no sensors are connected
+        if not sensors:
+            st.divider()
+            st.info(body="No connected sensors found. Please add one on the 'Add Sensor' page.", icon="💡")
+
+    @staticmethod
+    def _register_model(file: UploadedFile, sensor: TouchSensor):
+        """
+        Register the uploaded model by linking it with the selected sensor.
+
+        :param file: The uploaded pre-trained model file.
+        :param sensor: The selected TouchSensor to associate with the model.
+        """
+        model_registry: ModelRegistry = CentralRegistry.model_registry()
+        model = Model(session=ModelLoader.from_file(file),
+                      sensor=sensor)  # Create a Model object from the uploaded file and sensor
+        model_registry.add_model(model)  # Add the model to the registry
+
+    @staticmethod
+    def _upload_model():
+        """
+        Handle the model file upload in the Streamlit UI.
+
+        :return: The uploaded model file (UploadedFile), or None if no file is uploaded.
+        """
+        return st.file_uploader(label="Upload your pre-trained model", type=['zip'], accept_multiple_files=False)
+
+    @staticmethod
+    def _get_sensor_dict() -> dict[str, TouchSensor]:
+        """
+        Retrieve a dictionary mapping sensor names to TouchSensor objects.
+
+        :return: A dictionary where the keys are sensor names and the values are TouchSensor instances.
+        """
+        group_registry: ViewerGroupRegistry = CentralRegistry.viewer_group_registry()
+        return {
+            f'Sensor name: {viewer.sensor.get("sensor_name")}, Group name: {group.group_name}': viewer.sensor
+            for group in group_registry.viewer_groups  # Iterate through all groups in the registry
+            for viewer in group.viewers  # Iterate through all viewers in each group
+        }
+
+
+# Create and display the AddModel UI
+add_model = AddModel()
+add_model.show()

@@ -1,0 +1,36 @@
+group_name: Robotic hand    # Group name.
+destination: my_recording   # Name of the dataset being recorded (located under ./datasets/<destination>, optional).
+sensors:                    # List of sensors belonging to that group.
+
+  # -- Example for Digit Sensor --
+
+    # Mandatory
+  - sensor_type: Digit              # Use Digit.
+    sensor_name: First Gripper      # Sensor name (unique inside a group).
+    serial_id: D20804               # Sensor's serial ID. CHANGE THIS TO THE SERIAL ID OF YOUR SENSOR!
+
+    # Optional
+    resolution: QVGA                # Image resolution: VGA (30 FPS), QVGA (60 FPS). Default: QVGA.
+    rgb:                            # RGB LED brightness (0-15). Default: [15, 15, 15].
+      - 15    # Red
+      - 15    # Green
+      - 15    # Blue
+
+  # -- Example for GelSight Mini Sensor --
+
+    # Mandatory
+    # - sensor_type: GelSight Mini    # Use GelSight Mini.
+    #   sensor_name: Second Gripper   # Sensor name (unique inside a group).
+
+payload:                            # Labels for the dataset (optional).
+  # Slider
+  - type: slider                    # Use 'slider'.
+    label: Difficulty               # Label displayed to the user.
+    min_value: -10                  # Minimum value (float). Default: 0.
+    max_value: 20                   # Maximum value (float). Default: 10.
+    default: 8                      # Default value (float). Default: 0.
+
+  # Text input
+  - type: text_input                # Use 'text_input'.
+    label: Grasped object           # Label displayed to the user.
+    default: apple                  # Default value (str). Default: "".

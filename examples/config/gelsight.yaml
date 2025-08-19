@@ -1,0 +1,3 @@
+# Mandatory
+sensor_type: "GelSight Mini"    # Use "GelSight Mini".
+sensor_name: "Second Gripper"   # Sensor name (arbitrary).

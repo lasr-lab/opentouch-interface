@@ -1,0 +1,19 @@
+# Mandatory
+sensor_type: Digit360         # Use "Digit360".
+sensor_name: Third Gripper    # Sensor name (arbitrary).
+serial_id: D313D939EA         # Sensor's serial ID.
+
+# Optional
+led_values:                   # RGB values of the 8 LEDs
+  - [ 0, 0, 0 ]               # Must be in range of [0, 255]
+  - [ 0, 0, 0 ]
+  - [ 0, 0, 0 ]
+  - [ 0, 0, 0 ]
+  - [ 0, 0, 0 ]
+  - [ 0, 0, 0 ]
+  - [ 0, 0, 0 ]
+  - [ 0, 0, 0 ]
+data_streams:                 # List of modalities being accessed. Default: camera, serial, audio
+  - camera
+  - serial
+  - audio
